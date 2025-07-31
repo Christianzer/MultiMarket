@@ -9,11 +9,6 @@
     "dist",
     "electron"
   ],
-  "publish": {
-    "provider": "github",
-    "owner": "Christianzer",
-    "repo": "MultiMarket"
-  },
   "icon": "build/icon",
   "linux": {
     "target": "AppImage",
