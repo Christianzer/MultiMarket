@@ -19,6 +19,7 @@
     "format": "prettier --write src/",
     "electron:dev": "vite --mode electron",
     "electron:build": "npm run build && electron-builder",
+    "electron:build-win": "npm run build-only && electron-builder --win",
     "electron:publish": "npm run build && electron-builder --publish=always",
     "electron:start": "electron .",
     "electron:debug": "electron . --inspect=9229",
