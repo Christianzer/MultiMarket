@@ -20,7 +20,6 @@ class ApiService {
     const isFormData = options.body instanceof FormData
     
     const config: RequestInit = {
-      timeout: API_CONFIG.timeout,
       ...options,
       headers: {
         ...(!isFormData ? API_CONFIG.headers : {}),
@@ -44,13 +43,13 @@ class ApiService {
 
       // Gérer les réponses 204 (No Content) pour les suppressions
       if (response.status === 204) {
-        return { success: true, status: 204 } as ApiResponse<T>
+        return { success: true, status: 204, data: null as T }
       }
 
       // Gérer les réponses sans contenu
       const contentType = response.headers.get('content-type')
       if (!contentType || !contentType.includes('application/json')) {
-        return { success: true, status: response.status } as ApiResponse<T>
+        return { success: true, status: response.status, data: null as T }
       }
 
       return await response.json()

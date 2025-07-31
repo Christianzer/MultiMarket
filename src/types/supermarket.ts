@@ -4,7 +4,7 @@ export interface Supermarket {
   code: string
   address: string
   phone: string
-  logo: string
+  logo: string | null
   primaryColor: string
   secondaryColor: string
   active: boolean

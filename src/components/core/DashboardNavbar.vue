@@ -61,7 +61,7 @@ const getUserInitials = (username: string) => {
         <DropdownMenuTrigger as-child>
           <Button variant="outline" class="border-0 flex items-center max-w-[200px] w-full justify-start">
             <Avatar class="h-8 w-8">
-              <AvatarImage :src="buildLogoUrl(authStore.supermarket?.logo)" v-if="authStore.supermarket?.logo" />
+              <AvatarImage :src="buildLogoUrl(authStore.supermarket?.logo || '') || '/favicon.ico'" v-if="authStore.supermarket?.logo" />
               <AvatarFallback 
                 :style="{ backgroundColor: store.primaryColor, color: 'white' }"
                 v-if="authStore.currentUser"

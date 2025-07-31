@@ -45,7 +45,7 @@ const loadProducts = async () => {
     productsError.value = ''
     
     const response = await api.products.getAll()
-    products.value = response.data || response
+    products.value = (response.data as any[]) || []
   } catch (err: any) {
     productsError.value = err.message || 'Erreur lors du chargement des produits'
   } finally {

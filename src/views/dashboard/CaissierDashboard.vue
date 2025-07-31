@@ -150,7 +150,7 @@ const recentTransactions = [
       <CardContent>
         <div class="flex items-center space-x-4">
           <img 
-            :src="buildLogoUrl(authStore.supermarket.logo)" 
+            :src="buildLogoUrl(authStore.supermarket?.logo || '') || '/favicon.ico'" 
             :alt="authStore.supermarket.name"
             class="h-12 w-12 object-contain rounded"
           />

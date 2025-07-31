@@ -50,7 +50,7 @@ const loadSupermarkets = async () => {
     loading.value = true
     const response = await api.supermarkets.getAll()
     console.log('Supermarkets loaded:', response)
-    supermarkets.value = response
+    supermarkets.value = response.data as Supermarket[] || []
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des supermarchés'
   } finally {
@@ -117,9 +117,9 @@ const createSupermarket = async () => {
     console.log('Supermarket created:', response)
     
     // Upload logo if provided
-    if (logoFile.value && response.id) {
+    if (logoFile.value && (response.data as any)?.id) {
       console.log("Fichier logo :", logoFile.value)
-      await api.supermarkets.uploadLogo(response.id, logoFile.value)
+      await api.supermarkets.uploadLogo((response.data as any).id, logoFile.value)
     }
     
     await loadSupermarkets()
@@ -210,7 +210,7 @@ onMounted(() => {
           <div class="flex items-center justify-between">
             <div class="flex items-center space-x-3">
               <img 
-                :src="buildLogoUrl(supermarket.logo)" 
+                :src="buildLogoUrl(supermarket.logo) || '/favicon.ico'" 
                 :alt="supermarket.name"
                 class="h-12 w-12 object-contain rounded-lg border bg-gray-50"
               />
@@ -219,8 +219,8 @@ onMounted(() => {
                 <CardDescription>{{ supermarket.code }}</CardDescription>
               </div>
             </div>
-            <Badge :variant="supermarket.status === 'Actif' ? 'default' : 'secondary'">
-              {{ supermarket.status }}
+            <Badge :variant="supermarket.active ? 'default' : 'secondary'">
+              {{ supermarket.active ? 'Actif' : 'Inactif' }}
             </Badge>
           </div>
         </CardHeader>
@@ -383,7 +383,7 @@ onMounted(() => {
             <div class="flex items-center space-x-4 mt-2">
               <div v-if="selectedSupermarket.logo" class="text-center">
                 <p class="text-xs text-muted-foreground mb-1">Logo actuel</p>
-                <img :src="buildLogoUrl(selectedSupermarket.logo)" :alt="selectedSupermarket.name" class="h-16 w-16 object-contain rounded-lg border bg-gray-50" />
+                <img :src="buildLogoUrl(selectedSupermarket.logo) || '/favicon.ico'" :alt="selectedSupermarket.name" class="h-16 w-16 object-contain rounded-lg border bg-gray-50" />
               </div>
               <div v-if="logoPreview" class="text-center">
                 <p class="text-xs text-muted-foreground mb-1">Nouveau logo</p>
@@ -415,7 +415,7 @@ onMounted(() => {
         <div class="space-y-4 py-4" v-if="selectedSupermarket">
           <div class="flex items-center space-x-4">
             <img 
-              :src="buildLogoUrl(selectedSupermarket.logo)" 
+              :src="buildLogoUrl(selectedSupermarket.logo) || '/favicon.ico'" 
               :alt="selectedSupermarket.name"
               class="h-16 w-16 object-contain rounded-lg border bg-gray-50"
           
@@ -476,7 +476,7 @@ onMounted(() => {
         <div class="py-4" v-if="selectedSupermarket">
           <div class="flex items-center space-x-3 p-3 bg-muted rounded-lg">
             <img 
-              :src="buildLogoUrl(selectedSupermarket.logo)" 
+              :src="buildLogoUrl(selectedSupermarket.logo) || '/favicon.ico'" 
               :alt="selectedSupermarket.name"
               class="h-10 w-10 object-contain rounded bg-gray-50"
             />

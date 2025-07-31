@@ -40,7 +40,7 @@ const loadProducts = async () => {
   try {
     loading.value = true
     const response = await api.products.getAll()
-    products.value = response.data || response
+    products.value = (response as any)?.data || response || []
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des produits'
   } finally {
@@ -311,13 +311,13 @@ onMounted(async () => {
             </TableCell>
             
                       <TableCell>
-                <div class="font-medium text-info">{{ product.stock }}</div>
+                <div class="font-medium text-info">{{ (product as any).stock || 0 }}</div>
             </TableCell>
             <TableCell>
-              <div class="font-medium text-info">{{ product.vendu }}</div>
+              <div class="font-medium text-info">{{ (product as any).vendu || 0 }}</div>
             </TableCell>
             <TableCell>
-              <div class="font-medium text-secondary">{{ product.restant }}</div>
+              <div class="font-medium text-secondary">{{ (product as any).restant || 0 }}</div>
             </TableCell>
             <TableCell class="text-center">
               <div class="flex justify-center space-x-1">
@@ -334,7 +334,7 @@ onMounted(async () => {
             </TableCell>
           </TableRow>
           <TableRow v-if="filteredProducts.length === 0">
-            <TableCell :colspan="authStore.userRole === 'super_admin' ? 6 : 5" class="text-center text-muted-foreground py-8">
+            <TableCell :colspan="authStore.userRole === 'super_admin' ? 9 : 8" class="text-center text-muted-foreground py-8">
               Aucun produit trouvé
             </TableCell>
           </TableRow>
@@ -475,15 +475,15 @@ onMounted(async () => {
             </div>
              <div class="flex justify-between">
               <span class="text-sm text-muted-foreground">Quantité depart :</span>
-              <span class="text-sm font-medium">{{ selectedProduct.stock }}</span>
+              <span class="text-sm font-medium">{{ (selectedProduct as any).stock || 0 }}</span>
             </div>
              <div class="flex justify-between">
               <span class="text-sm text-muted-foreground">Quantité vendu :</span>
-              <span class="text-sm font-medium">{{ selectedProduct.vendu }}</span>
+              <span class="text-sm font-medium">{{ (selectedProduct as any).vendu || 0 }}</span>
             </div>
              <div class="flex justify-between">
               <span class="text-sm text-muted-foreground">Quantité restant :</span>
-              <span class="text-sm font-medium">{{ selectedProduct.restant }}</span>
+              <span class="text-sm font-medium">{{ (selectedProduct as any).restant || 0 }}</span>
             </div>
           </div>
         </div>
