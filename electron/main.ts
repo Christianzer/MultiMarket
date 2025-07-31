@@ -36,7 +36,7 @@ function createWindow() {
     icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.ts'),
+      preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
     },
@@ -62,37 +62,48 @@ function createWindow() {
   })
 }
 
-// Configure auto-updater
-autoUpdater.checkForUpdatesAndNotify()
+// Configure auto-updater - only in production
+function setupAutoUpdater() {
+  // Only enable auto-updater in production builds
+  if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
+    // Auto-updater event listeners with proper error handling
+    autoUpdater.on('checking-for-update', () => {
+      console.log('Checking for update...')
+    })
 
-// Auto-updater event listeners
-autoUpdater.on('checking-for-update', () => {
-  console.log('Checking for update...')
-})
+    autoUpdater.on('update-available', (info) => {
+      console.log('Update available:', info)
+    })
 
-autoUpdater.on('update-available', (info) => {
-  console.log('Update available:', info)
-})
+    autoUpdater.on('update-not-available', (info) => {
+      console.log('Update not available:', info)
+    })
 
-autoUpdater.on('update-not-available', (info) => {
-  console.log('Update not available:', info)
-})
+    autoUpdater.on('error', (err) => {
+      console.log('Error in auto-updater:', err)
+      // Don't crash the app on updater errors
+    })
 
-autoUpdater.on('error', (err) => {
-  console.log('Error in auto-updater:', err)
-})
+    autoUpdater.on('download-progress', (progressObj) => {
+      let log_message = `Download speed: ${progressObj.bytesPerSecond}`
+      log_message += ` - Downloaded ${progressObj.percent}%`
+      log_message += ` (${progressObj.transferred}/${progressObj.total})`
+      console.log(log_message)
+    })
 
-autoUpdater.on('download-progress', (progressObj) => {
-  let log_message = `Download speed: ${progressObj.bytesPerSecond}`
-  log_message += ` - Downloaded ${progressObj.percent}%`
-  log_message += ` (${progressObj.transferred}/${progressObj.total})`
-  console.log(log_message)
-})
+    autoUpdater.on('update-downloaded', (info) => {
+      console.log('Update downloaded:', info)
+      autoUpdater.quitAndInstall()
+    })
 
-autoUpdater.on('update-downloaded', (info) => {
-  console.log('Update downloaded:', info)
-  autoUpdater.quitAndInstall()
-})
+    // Check for updates
+    autoUpdater.checkForUpdatesAndNotify().catch(err => {
+      console.log('Auto-updater check failed:', err.message)
+    })
+  } else {
+    console.log('Auto-updater disabled in development mode')
+  }
+}
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
@@ -100,12 +111,8 @@ autoUpdater.on('update-downloaded', (info) => {
 app.whenReady().then(() => {
   createWindow()
   
-  // Check for updates after the app is ready
-  if (!process.env.VITE_DEV_SERVER_URL) {
-    setTimeout(() => {
-      autoUpdater.checkForUpdatesAndNotify()
-    }, 5000) // Check for updates 5 seconds after startup
-  }
+  // Setup auto-updater with proper error handling
+  setupAutoUpdater()
 })
 
 // Quit when all windows are closed, except on macOS. There, it's common
@@ -306,8 +313,12 @@ ipcMain.handle('set-printer', async (event, printerName: string) => {
 // IPC handlers for auto-updater
 ipcMain.handle('check-for-updates', async () => {
   try {
-    await autoUpdater.checkForUpdatesAndNotify()
-    return { success: true }
+    if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
+      await autoUpdater.checkForUpdatesAndNotify()
+      return { success: true }
+    } else {
+      return { success: false, error: 'Auto-updater is disabled in development mode' }
+    }
   } catch (error) {
     console.error('Error checking for updates:', error)
     return { success: false, error: (error as Error).message }
