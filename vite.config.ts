@@ -16,7 +16,7 @@ export default defineConfig(({ mode }) => {
   
   if (isElectron) {
     plugins.push(
-      electron([
+      ...electron([
         {
           entry: path.resolve(__dirname, 'electron/main.ts'),
           onstart(args) {

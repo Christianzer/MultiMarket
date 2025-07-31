@@ -23,6 +23,14 @@
   },
   "win": {
     "target": "nsis",
-    "publisherName": "MultiMarket"
+    "verifyUpdateCodeSignature": false,
+    "requestedExecutionLevel": "asInvoker",
+    "signAndEditExecutable": false
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true
   }
 }
