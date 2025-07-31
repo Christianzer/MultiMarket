@@ -30,8 +30,7 @@
     "icon": "build/icon.ico",
     "verifyUpdateCodeSignature": false,
     "requestedExecutionLevel": "asInvoker",
-    "signAndEditExecutable": false,
-    "publisherName": "Christian"
+    "signAndEditExecutable": false
   },
   "nsis": {
     "oneClick": false,
