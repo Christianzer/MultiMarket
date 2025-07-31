@@ -1,0 +1,29 @@
+export interface Supermarket {
+  id: number
+  name: string
+  code: string
+  address: string
+  phone: string
+  logo: string
+  primaryColor: string
+  secondaryColor: string
+  active: boolean
+  createdAt: string
+}
+
+export interface CreateSupermarketRequest {
+  name: string
+  code: string
+  address: string
+  phone: string
+  primaryColor: string
+  secondaryColor: string
+}
+
+export interface UpdateSupermarketRequest {
+  name: string
+  address: string
+  phone: string
+  primaryColor: string
+  secondaryColor: string
+}

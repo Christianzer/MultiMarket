@@ -1,0 +1,173 @@
+import { API_CONFIG, buildApiUrl, type ApiResponse, type ApiError } from '@/config/api'
+
+// Service API générique
+class ApiService {
+  private getAuthToken(): string | null {
+    return localStorage.getItem('auth_token')
+  }
+
+  private getAuthHeaders(): Record<string, string> {
+    const token = this.getAuthToken()
+    return token ? { 'Authorization': `Bearer ${token}` } : {}
+  }
+
+  async request<T>(
+    endpoint: string, 
+    options: RequestInit = {}
+  ): Promise<ApiResponse<T>> {
+    const url = buildApiUrl(endpoint)
+
+    const isFormData = options.body instanceof FormData
+    
+    const config: RequestInit = {
+      timeout: API_CONFIG.timeout,
+      ...options,
+      headers: {
+        ...(!isFormData ? API_CONFIG.headers : {}),
+        ...this.getAuthHeaders(),
+        ...options.headers,
+      },
+    }
+
+    try {
+      const response = await fetch(url, config)
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        const error: ApiError = {
+          message: errorData.message || `HTTP ${response.status}: ${response.statusText}`,
+          code: errorData.code || response.status.toString(),
+          status: response.status
+        }
+        throw error
+      }
+
+      // Gérer les réponses 204 (No Content) pour les suppressions
+      if (response.status === 204) {
+        return { success: true, status: 204 } as ApiResponse<T>
+      }
+
+      // Gérer les réponses sans contenu
+      const contentType = response.headers.get('content-type')
+      if (!contentType || !contentType.includes('application/json')) {
+        return { success: true, status: response.status } as ApiResponse<T>
+      }
+
+      return await response.json()
+    } catch (error) {
+      if (error instanceof TypeError) {
+        // Erreur réseau
+        throw {
+          message: 'Erreur de connexion au serveur',
+          code: 'NETWORK_ERROR',
+          status: 0
+        } as ApiError
+      }
+      throw error
+    }
+  }
+
+  // Méthodes HTTP courantes
+  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: 'GET' })
+  }
+
+  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    const headers: Record<string, string> = {}
+    
+    // Pour l'authentification, utiliser application/json
+    if (endpoint === '/login' || endpoint === '/logout' || endpoint === '/verify-token') {
+      headers['Accept'] = 'application/json'
+    }
+    
+    return this.request<T>(endpoint, {
+      method: 'POST',
+      body: data ? JSON.stringify(data) : undefined,
+      headers
+    })
+  }
+
+  async put<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PUT',
+      body: data ? JSON.stringify(data) : undefined,
+    })
+  }
+
+  async patch<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
+      body: data ? JSON.stringify(data) : undefined,
+    })
+  }
+
+  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, { method: 'DELETE' })
+  }
+}
+
+export const apiService = new ApiService()
+
+// Fonctions utilitaires pour les endpoints courants
+export const api = {
+  // Authentification
+  auth: {
+    login: (credentials: any) => apiService.post('/login', credentials),
+    logout: () => apiService.post('/logout'),
+    verifyToken: () => apiService.post('/verify-token'),
+    refreshToken: () => apiService.post('/refresh-token'),
+  },
+
+  // Utilisateurs
+  users: {
+    getAll: () => apiService.get('/users'),
+    getById: (id: number) => apiService.get(`/users/${id}`),
+    create: (user: any) => apiService.post('/users', user),
+    update: (id: number, user: any) => apiService.put(`/users/${id}`, user),
+    delete: (id: number) => apiService.delete(`/users/${id}`),
+  },
+
+  // Supermarchés
+  supermarkets: {
+    getAll: () => apiService.get('/supermarkets'),
+    getById: (id: number) => apiService.get(`/supermarkets/${id}`),
+    create: (supermarket: any) => apiService.post('/supermarkets', supermarket),
+    update: (id: number, supermarket: any) => apiService.put(`/supermarkets/${id}`, supermarket),
+    delete: (id: number) => apiService.delete(`/supermarkets/${id}`),
+    uploadLogo: (id: number, logoFile: File) => {
+      const formData = new FormData()
+      formData.append('logo', logoFile)
+      return apiService.request(`/supermarkets/${id}/logo`, {
+        method: 'POST',
+        body: formData,
+        headers: {} // Remove Content-Type to let browser set multipart boundary
+      })
+    },
+  },
+
+  // Produits
+  products: {
+    getAll: () => apiService.get('/products'),
+    getById: (id: number) => apiService.get(`/products/${id}`),
+    create: (product: any) => apiService.post('/products', product),
+    update: (id: number, product: any) => apiService.put(`/products/${id}`, product),
+    delete: (id: number) => apiService.delete(`/products/${id}`),
+  },
+
+  // Ventes
+  sales: {
+    getAll: () => apiService.get('/sales'),
+    getById: (id: number) => apiService.get(`/sales/${id}`),
+    create: (sale: any) => apiService.post('/sales', sale),
+    update: (id: number, sale: any) => apiService.put(`/sales/${id}`, sale),
+    delete: (id: number) => apiService.delete(`/sales/${id}`),
+    getList: () => apiService.get('/my-sales'),
+  },
+
+  // Restockage
+  restock: {
+    getAll: () => apiService.get('/restocks'),
+    bulkRestock: (data: any) => apiService.post('/restock/bulk', data),
+    delete: (id: number) => apiService.delete(`/restocks/${id}`),
+  },
+}

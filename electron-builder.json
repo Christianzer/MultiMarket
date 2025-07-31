@@ -1,0 +1,28 @@
+{
+  "appId": "com.multimarket.app",
+  "productName": "MultiMarket",
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "dist",
+    "dist-electron"
+  ],
+  "publish": {
+    "provider": "github",
+    "owner": "Christianzer",
+    "repo": "MultiMarket"
+  },
+  "linux": {
+    "target": "AppImage",
+    "category": "Office"
+  },
+  "mac": {
+    "target": "dmg",
+    "category": "public.app-category.business"
+  },
+  "win": {
+    "target": "nsis",
+    "publisherName": "MultiMarket"
+  }
+}
