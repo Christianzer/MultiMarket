@@ -2,7 +2,8 @@
   "appId": "com.multimarket.app",
   "productName": "MultiMarket",
   "directories": {
-    "output": "release"
+    "output": "release",
+    "buildResources": "build"
   },
   "files": [
     "dist",
@@ -13,24 +14,31 @@
     "owner": "Christianzer",
     "repo": "MultiMarket"
   },
+  "icon": "build/icon",
   "linux": {
     "target": "AppImage",
-    "category": "Office"
+    "category": "Office",
+    "icon": "build/icon.png"
   },
   "mac": {
     "target": "dmg",
-    "category": "public.app-category.business"
+    "category": "public.app-category.business",
+    "icon": "build/icon.icns"
   },
   "win": {
     "target": "nsis",
+    "icon": "build/icon.ico",
     "verifyUpdateCodeSignature": false,
     "requestedExecutionLevel": "asInvoker",
-    "signAndEditExecutable": false
+    "signAndEditExecutable": false,
+    "publisherName": "Christian"
   },
   "nsis": {
     "oneClick": false,
     "allowToChangeInstallationDirectory": true,
     "createDesktopShortcut": true,
-    "createStartMenuShortcut": true
+    "createStartMenuShortcut": true,
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico"
   }
 }

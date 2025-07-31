@@ -21,6 +21,19 @@ export interface PrintResponse {
   error?: string
 }
 
+export interface UpdateProgress {
+  percent: number
+  transferred: number
+  total: number
+  speed: number
+}
+
+export interface UpdaterResponse {
+  success: boolean
+  result?: any
+  error?: string
+}
+
 export interface ElectronAPI {
   printReceipt: (htmlContent: string) => Promise<PrintResponse>
   getPrinters: () => Promise<PrinterListResponse>
@@ -29,6 +42,15 @@ export interface ElectronAPI {
   minimize: () => void
   maximize: () => void
   close: () => void
+  // Auto-updater functions
+  checkForUpdates: () => Promise<UpdaterResponse>
+  quitAndInstall: () => Promise<UpdaterResponse>
+  getAppVersion: () => Promise<string>
+  restartApp: () => void
+  // Auto-updater event listeners
+  onUpdaterMessage: (callback: (message: string) => void) => void
+  onUpdaterError: (callback: (error: string) => void) => void
+  onUpdaterProgress: (callback: (progress: UpdateProgress) => void) => void
 }
 
 // Extension de Window pour inclure l'API Electron

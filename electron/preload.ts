@@ -27,6 +27,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.invoke('window-minimize'),
   maximize: () => ipcRenderer.invoke('window-maximize'),
   close: () => ipcRenderer.invoke('window-close'),
+  
+  // API pour l'auto-updater
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+  quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  restartApp: () => ipcRenderer.invoke('restart-app'),
+  
+  // Event listeners pour l'auto-updater
+  onUpdaterMessage: (callback: (message: string) => void) => {
+    ipcRenderer.on('updater-message', (_, message) => callback(message))
+  },
+  onUpdaterError: (callback: (error: string) => void) => {
+    ipcRenderer.on('updater-error', (_, error) => callback(error))
+  },
+  onUpdaterProgress: (callback: (progress: any) => void) => {
+    ipcRenderer.on('updater-progress', (_, progress) => callback(progress))
+  },
 })
 
 // --------- Preload scripts loading ---------

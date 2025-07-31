@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory, type RouteMeta } from 'vue-router'
+import { createRouter, createWebHashHistory, type RouteMeta } from 'vue-router'
 import DashboardLayoutVue from '@/layouts/dashboard.vue';
 import { useAuthStore } from '@/stores/auth';
 
@@ -8,14 +8,11 @@ interface IRouteMeta {
 }
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes: [
     {
       path: '/',
-      redirect: (to) => {
-        // Rediriger vers le bon dashboard selon le rôle
-        return '/login'; // Par défaut vers login, le guard se chargera de la redirection
-      },
+      redirect: '/login',
     },
     {
       path: '/login',
@@ -29,10 +26,7 @@ const router = createRouter({
     {
       path: '/dashboard',
       component: DashboardLayoutVue,
-      redirect: (to) => {
-        // Redirection dynamique basée sur le rôle sera gérée par le guard
-        return '/dashboard/home';
-      },
+      redirect: '/dashboard/home',
       meta: {
         title: 'Dashboard',
         requiresAuth: true,

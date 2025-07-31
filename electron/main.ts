@@ -33,7 +33,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    icon: path.join(process.env.VITE_PUBLIC, 'favicon.ico'),
+    icon: path.join(process.env.APP_ROOT, 'build', 'icon.ico'),
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -62,53 +62,75 @@ function createWindow() {
   })
 }
 
-// Configure auto-updater - DISABLED until GitHub releases are properly configured
+// Configure auto-updater with proper error handling
 function setupAutoUpdater() {
-  // Auto-updater is disabled until GitHub releases are properly set up
-  console.log('Auto-updater is disabled until GitHub releases are configured')
-  
-  // Uncomment and configure the following when you have proper GitHub releases:
-  /*
-  // Only enable auto-updater in production builds when releases are available
+  // Only enable auto-updater in production builds
   if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
+    console.log('Setting up auto-updater for production...')
+    
+    // Configure auto-updater settings
+    autoUpdater.logger = console
+    autoUpdater.checkForUpdatesAndNotify = true
+    
     // Auto-updater event listeners with proper error handling
     autoUpdater.on('checking-for-update', () => {
       console.log('Checking for update...')
+      // Notify renderer process
+      win?.webContents.send('updater-message', 'Vérification des mises à jour...')
     })
 
     autoUpdater.on('update-available', (info) => {
       console.log('Update available:', info)
+      win?.webContents.send('updater-message', `Mise à jour disponible: v${info.version}`)
     })
 
     autoUpdater.on('update-not-available', (info) => {
       console.log('Update not available:', info)
+      win?.webContents.send('updater-message', 'Aucune mise à jour disponible')
     })
 
     autoUpdater.on('error', (err) => {
       console.log('Error in auto-updater:', err)
-      // Don't crash the app on updater errors
+      // Don't crash the app on updater errors, just log them
+      win?.webContents.send('updater-error', `Erreur de mise à jour: ${err.message}`)
     })
 
     autoUpdater.on('download-progress', (progressObj) => {
-      let log_message = `Download speed: ${progressObj.bytesPerSecond}`
-      log_message += ` - Downloaded ${progressObj.percent}%`
-      log_message += ` (${progressObj.transferred}/${progressObj.total})`
+      let log_message = `Vitesse: ${Math.round(progressObj.bytesPerSecond / 1024)} KB/s`
+      log_message += ` - Téléchargé ${Math.round(progressObj.percent)}%`
+      log_message += ` (${Math.round(progressObj.transferred / 1024 / 1024)} MB / ${Math.round(progressObj.total / 1024 / 1024)} MB)`
       console.log(log_message)
+      
+      // Notify renderer process of download progress
+      win?.webContents.send('updater-progress', {
+        percent: Math.round(progressObj.percent),
+        transferred: Math.round(progressObj.transferred / 1024 / 1024),
+        total: Math.round(progressObj.total / 1024 / 1024),
+        speed: Math.round(progressObj.bytesPerSecond / 1024)
+      })
     })
 
     autoUpdater.on('update-downloaded', (info) => {
       console.log('Update downloaded:', info)
-      autoUpdater.quitAndInstall()
+      win?.webContents.send('updater-message', 'Mise à jour téléchargée, redémarrage en cours...')
+      
+      // Give user a few seconds to see the message before restarting
+      setTimeout(() => {
+        autoUpdater.quitAndInstall()
+      }, 3000)
     })
 
-    // Check for updates
-    autoUpdater.checkForUpdatesAndNotify().catch(err => {
-      console.log('Auto-updater check failed:', err.message)
-    })
+    // Check for updates with error handling
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(err => {
+        console.log('Auto-updater check failed:', err.message)
+        win?.webContents.send('updater-error', `Impossible de vérifier les mises à jour: ${err.message}`)
+      })
+    }, 5000) // Wait 5 seconds after app start
+    
   } else {
     console.log('Auto-updater disabled in development mode')
   }
-  */
 }
 
 // This method will be called when Electron has finished
@@ -316,11 +338,39 @@ ipcMain.handle('set-printer', async (event, printerName: string) => {
   }
 })
 
-// IPC handlers for auto-updater - DISABLED
+// IPC handlers for auto-updater
 ipcMain.handle('check-for-updates', async () => {
-  return { success: false, error: 'Auto-updater is disabled until GitHub releases are configured' }
+  try {
+    if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
+      console.log('Manual update check requested')
+      const result = await autoUpdater.checkForUpdatesAndNotify()
+      return { success: true, result }
+    } else {
+      return { success: false, error: 'Auto-updater is disabled in development mode' }
+    }
+  } catch (error) {
+    console.error('Error checking for updates:', error)
+    return { success: false, error: (error as Error).message }
+  }
 })
 
 ipcMain.handle('quit-and-install', () => {
-  console.log('Auto-updater quit-and-install is disabled')
+  try {
+    console.log('Quit and install requested')
+    autoUpdater.quitAndInstall()
+    return { success: true }
+  } catch (error) {
+    console.error('Error during quit and install:', error)
+    return { success: false, error: (error as Error).message }
+  }
+})
+
+// Additional IPC handlers for updater info
+ipcMain.handle('get-app-version', () => {
+  return app.getVersion()
+})
+
+ipcMain.handle('restart-app', () => {
+  app.relaunch()
+  app.exit()
 })
