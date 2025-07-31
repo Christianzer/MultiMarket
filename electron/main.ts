@@ -62,9 +62,14 @@ function createWindow() {
   })
 }
 
-// Configure auto-updater - only in production
+// Configure auto-updater - DISABLED until GitHub releases are properly configured
 function setupAutoUpdater() {
-  // Only enable auto-updater in production builds
+  // Auto-updater is disabled until GitHub releases are properly set up
+  console.log('Auto-updater is disabled until GitHub releases are configured')
+  
+  // Uncomment and configure the following when you have proper GitHub releases:
+  /*
+  // Only enable auto-updater in production builds when releases are available
   if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
     // Auto-updater event listeners with proper error handling
     autoUpdater.on('checking-for-update', () => {
@@ -103,6 +108,7 @@ function setupAutoUpdater() {
   } else {
     console.log('Auto-updater disabled in development mode')
   }
+  */
 }
 
 // This method will be called when Electron has finished
@@ -310,21 +316,11 @@ ipcMain.handle('set-printer', async (event, printerName: string) => {
   }
 })
 
-// IPC handlers for auto-updater
+// IPC handlers for auto-updater - DISABLED
 ipcMain.handle('check-for-updates', async () => {
-  try {
-    if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
-      await autoUpdater.checkForUpdatesAndNotify()
-      return { success: true }
-    } else {
-      return { success: false, error: 'Auto-updater is disabled in development mode' }
-    }
-  } catch (error) {
-    console.error('Error checking for updates:', error)
-    return { success: false, error: (error as Error).message }
-  }
+  return { success: false, error: 'Auto-updater is disabled until GitHub releases are configured' }
 })
 
 ipcMain.handle('quit-and-install', () => {
-  autoUpdater.quitAndInstall()
+  console.log('Auto-updater quit-and-install is disabled')
 })
