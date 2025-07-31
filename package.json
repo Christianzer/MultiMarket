@@ -8,7 +8,7 @@
     "name": "Christian",
     "email": "christianaka65@gmail.com"
   },
-  "main": "dist-electron/main.js",
+  "main": "electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "run-p type-check \"build-only {@}\" --",
@@ -20,7 +20,9 @@
     "electron:dev": "vite --mode electron",
     "electron:build": "npm run build && electron-builder",
     "electron:publish": "npm run build && electron-builder --publish=always",
-    "electron:start": "electron ."
+    "electron:start": "electron .",
+    "electron:debug": "electron . --inspect=9229",
+    "electron:dev-debug": "vite --mode electron && electron . --inspect=9229"
   },
   "dependencies": {
     "@radix-icons/vue": "^1.0.0",

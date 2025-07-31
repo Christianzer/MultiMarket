@@ -30,7 +30,7 @@ export default defineConfig(({ mode }) => {
             build: {
               sourcemap: true,
               minify: production,
-              outDir: path.resolve(__dirname, 'dist-electron'),
+              outDir: path.resolve(__dirname, 'electron'),
               rollupOptions: {
                 external: Object.keys(require('./package.json').dependencies || {}),
               },
@@ -46,7 +46,7 @@ export default defineConfig(({ mode }) => {
             build: {
               sourcemap: 'inline',
               minify: production,
-              outDir: path.resolve(__dirname, 'dist-electron'),
+              outDir: path.resolve(__dirname, 'electron'),
               rollupOptions: {
                 external: Object.keys(require('./package.json').dependencies || {}),
               },

@@ -1,12 +1,14 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
+import pkg from "electron-updater";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+const { autoUpdater } = pkg;
 createRequire(import.meta.url);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 process.env.APP_ROOT = path.join(__dirname, "..");
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-const MAIN_DIST = path.join(process.env.APP_ROOT, "dist-electron");
+const MAIN_DIST = path.join(process.env.APP_ROOT, "electron");
 const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
 process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
 let win;
@@ -17,8 +19,9 @@ function createWindow() {
     minWidth: 800,
     minHeight: 600,
     icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
+    autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.mjs"),
+      preload: path.join(__dirname, "preload.ts"),
       nodeIntegration: false,
       contextIsolation: true
     }
@@ -38,7 +41,37 @@ function createWindow() {
     return { action: "deny" };
   });
 }
-app.whenReady().then(createWindow);
+autoUpdater.checkForUpdatesAndNotify();
+autoUpdater.on("checking-for-update", () => {
+  console.log("Checking for update...");
+});
+autoUpdater.on("update-available", (info) => {
+  console.log("Update available:", info);
+});
+autoUpdater.on("update-not-available", (info) => {
+  console.log("Update not available:", info);
+});
+autoUpdater.on("error", (err) => {
+  console.log("Error in auto-updater:", err);
+});
+autoUpdater.on("download-progress", (progressObj) => {
+  let log_message = `Download speed: ${progressObj.bytesPerSecond}`;
+  log_message += ` - Downloaded ${progressObj.percent}%`;
+  log_message += ` (${progressObj.transferred}/${progressObj.total})`;
+  console.log(log_message);
+});
+autoUpdater.on("update-downloaded", (info) => {
+  console.log("Update downloaded:", info);
+  autoUpdater.quitAndInstall();
+});
+app.whenReady().then(() => {
+  createWindow();
+  if (!process.env.VITE_DEV_SERVER_URL) {
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify();
+    }, 5e3);
+  }
+});
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -205,6 +238,18 @@ ipcMain.handle("set-printer", async (event, printerName) => {
     console.error("Erreur lors de la sélection de l'imprimante:", error);
     return { success: false, error: error.message };
   }
+});
+ipcMain.handle("check-for-updates", async () => {
+  try {
+    await autoUpdater.checkForUpdatesAndNotify();
+    return { success: true };
+  } catch (error) {
+    console.error("Error checking for updates:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("quit-and-install", () => {
+  autoUpdater.quitAndInstall();
 });
 export {
   MAIN_DIST,
