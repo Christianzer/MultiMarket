@@ -33,7 +33,6 @@
     "verifyUpdateCodeSignature": false,
     "requestedExecutionLevel": "asInvoker",
     "signAndEditExecutable": false,
-    "publisherName": "MultiMarket",
     "legalTrademarks": "MultiMarket"
   },
   "nsis": {
