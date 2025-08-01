@@ -21,10 +21,14 @@
     "electron:build": "npm run build && electron-builder",
     "electron:build-win": "npm run build-only && electron-builder --win",
     "electron:build-win-publish": "npm run build-only && electron-builder --win --publish=always",
+    "electron:build-clean": "npm run clean && npm run electron:build-win-publish",
     "electron:publish": "npm run build && electron-builder --publish=always",
     "electron:start": "electron .",
     "electron:debug": "electron . --inspect=9229",
-    "electron:dev-debug": "vite --mode electron && electron . --inspect=9229"
+    "electron:dev-debug": "vite --mode electron && electron . --inspect=9229",
+    "clean": "rm -rf release dist",
+    "clean:win": "if exist release rmdir /s /q release && if exist dist rmdir /s /q dist",
+    "check-icons": "node fix-icons.js"
   },
   "dependencies": {
     "@radix-icons/vue": "^1.0.0",

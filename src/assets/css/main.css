@@ -48,3 +48,37 @@ input:active, input:focus, input:blur {
 .sidebar.is-active {
   left: 280px;
 }
+
+/* Styles pour les notifications de mise à jour */
+.update-notification-enter-active, .update-notification-leave-active {
+  transition: all 0.3s ease-in-out;
+}
+
+.update-notification-enter-from {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.update-notification-leave-to {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.update-notification-enter-to, .update-notification-leave-from {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Animation de pulsation pour les notifications importantes */
+@keyframes pulse-update {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(59, 130, 246, 0);
+  }
+}
+
+.update-notification-pulse {
+  animation: pulse-update 2s infinite;
+}

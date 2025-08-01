@@ -81,7 +81,7 @@ function setupAutoUpdater() {
 
     autoUpdater.on('update-available', (info) => {
       console.log('Update available:', info)
-      win?.webContents.send('updater-message', `Mise à jour disponible: v${info.version}`)
+      win?.webContents.send('updater-message', 'Une mise à jour est disponible, veuillez mettre à jour l\'application et redémarrer')
     })
 
     autoUpdater.on('update-not-available', (info) => {
@@ -112,12 +112,12 @@ function setupAutoUpdater() {
 
     autoUpdater.on('update-downloaded', (info) => {
       console.log('Update downloaded:', info)
-      win?.webContents.send('updater-message', 'Mise à jour téléchargée, redémarrage en cours...')
+      win?.webContents.send('updater-message', 'Mise à jour téléchargée. L\'application va redémarrer automatiquement dans quelques secondes...')
       
       // Give user a few seconds to see the message before restarting
       setTimeout(() => {
         autoUpdater.quitAndInstall()
-      }, 3000)
+      }, 5000)
     })
 
     // Check for updates with error handling

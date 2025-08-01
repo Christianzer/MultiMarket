@@ -9,6 +9,9 @@
     "dist",
     "electron"
   ],
+  "extraMetadata": {
+    "main": "electron/main.js"
+  },
   "publish": {
     "provider": "github",
     "owner": "Christianzer",
@@ -29,7 +32,9 @@
     "icon": "build/icon.ico",
     "verifyUpdateCodeSignature": false,
     "requestedExecutionLevel": "asInvoker",
-    "signAndEditExecutable": false
+    "signAndEditExecutable": false,
+    "publisherName": "MultiMarket",
+    "legalTrademarks": "MultiMarket"
   },
   "nsis": {
     "oneClick": false,
@@ -38,6 +43,9 @@
     "createStartMenuShortcut": true,
     "installerIcon": "build/icon.ico",
     "uninstallerIcon": "build/icon.ico",
-    "installerHeaderIcon": "build/icon.ico"
+    "installerHeaderIcon": "build/icon.ico",
+    "shortcutName": "MultiMarket",
+    "runAfterFinish": true,
+    "deleteAppDataOnUninstall": false
   }
 }
