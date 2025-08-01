@@ -1,48 +1,206 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-// --------- Expose some API to the Renderer process ---------
-contextBridge.exposeInMainWorld('electronAPI', {
-  on(...args: Parameters<typeof ipcRenderer.on>) {
-    const [channel, listener] = args
-    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
-  },
-  off(...args: Parameters<typeof ipcRenderer.off>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.off(channel, ...omit)
-  },
-  send(...args: Parameters<typeof ipcRenderer.send>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.send(channel, ...omit)
-  },
-  invoke(...args: Parameters<typeof ipcRenderer.invoke>) {
-    const [channel, ...omit] = args
-    return ipcRenderer.invoke(channel, ...omit)
-  },
+// Liste des canaux autorisés pour la sécurité
+const ALLOWED_CHANNELS = {
+  // IPC Channels
+  invoke: [
+    'print-receipt',
+    'open-dev-tools',
+    'window-minimize',
+    'window-maximize', 
+    'window-close',
+    'check-for-updates',
+    'quit-and-install',
+    'get-app-version',
+    'restart-app'
+  ],
+  on: [
+    'main-process-message',
+    'updater-message',
+    'updater-error',
+    'updater-progress'
+  ],
+  send: []
+}
 
-  // API spécifique pour l'application
-  printReceipt: (htmlContent: string) => ipcRenderer.invoke('print-receipt', htmlContent),
-  openDevTools: () => ipcRenderer.invoke('open-dev-tools'),
-  minimize: () => ipcRenderer.invoke('window-minimize'),
-  maximize: () => ipcRenderer.invoke('window-maximize'),
-  close: () => ipcRenderer.invoke('window-close'),
-  
-  // API pour l'auto-updater
-  checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
-  quitAndInstall: () => ipcRenderer.invoke('quit-and-install'),
-  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
-  restartApp: () => ipcRenderer.invoke('restart-app'),
-  
-  // Event listeners pour l'auto-updater
-  onUpdaterMessage: (callback: (message: string) => void) => {
-    ipcRenderer.on('updater-message', (_, message) => callback(message))
-  },
-  onUpdaterError: (callback: (error: string) => void) => {
-    ipcRenderer.on('updater-error', (_, error) => callback(error))
-  },
-  onUpdaterProgress: (callback: (progress: any) => void) => {
-    ipcRenderer.on('updater-progress', (_, progress) => callback(progress))
-  },
-})
+// Validation sécurisée des canaux
+function validateChannel(channel: string, type: 'invoke' | 'on' | 'send'): boolean {
+  return ALLOWED_CHANNELS[type].includes(channel)
+}
+
+// API sécurisée avec validation et limitation de taux
+class SecureElectronAPI {
+  private rateLimiter = new Map<string, { count: number; resetTime: number }>()
+  private readonly RATE_LIMIT = 10 // 10 appels par seconde maximum
+  private readonly RATE_WINDOW = 1000 // 1 seconde
+
+  private checkRateLimit(channel: string): boolean {
+    const now = Date.now()
+    const limit = this.rateLimiter.get(channel)
+
+    if (!limit || now > limit.resetTime) {
+      this.rateLimiter.set(channel, { count: 1, resetTime: now + this.RATE_WINDOW })
+      return true
+    }
+
+    if (limit.count >= this.RATE_LIMIT) {
+      console.warn(`Rate limit exceeded for channel: ${channel}`)
+      return false
+    }
+
+    limit.count++
+    return true
+  }
+
+  // IPC Communication sécurisé
+  on(channel: string, listener: (event: any, ...args: any[]) => void) {
+    if (!validateChannel(channel, 'on')) {
+      console.error(`Unauthorized channel: ${channel}`)
+      return
+    }
+    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args))
+  }
+
+  off(channel: string, ...args: any[]) {
+    if (!validateChannel(channel, 'on')) {
+      console.error(`Unauthorized channel: ${channel}`)
+      return
+    }
+    return ipcRenderer.off(channel, ...args)
+  }
+
+  send(channel: string, ...args: any[]) {
+    if (!validateChannel(channel, 'send')) {
+      console.error(`Unauthorized channel: ${channel}`)
+      return
+    }
+    if (!this.checkRateLimit(channel)) return
+    return ipcRenderer.send(channel, ...args)
+  }
+
+  async invoke(channel: string, ...args: any[]) {
+    if (!validateChannel(channel, 'invoke')) {
+      console.error(`Unauthorized channel: ${channel}`)
+      throw new Error(`Unauthorized channel: ${channel}`)
+    }
+    if (!this.checkRateLimit(channel)) {
+      throw new Error(`Rate limit exceeded for: ${channel}`)
+    }
+
+    const startTime = performance.now()
+    try {
+      const result = await ipcRenderer.invoke(channel, ...args)
+      const duration = performance.now() - startTime
+      
+      // Log des opérations lentes
+      if (duration > 1000) {
+        console.warn(`Slow IPC operation: ${channel} took ${duration.toFixed(2)}ms`)
+      }
+      
+      return result
+    } catch (error) {
+      console.error(`IPC Error on ${channel}:`, error)
+      throw error
+    }
+  }
+
+  // API spécifique avec validation des paramètres
+  printReceipt(htmlContent: string) {
+    if (typeof htmlContent !== 'string' || htmlContent.length === 0) {
+      throw new Error('Invalid HTML content for printing')
+    }
+    if (htmlContent.length > 1024 * 1024) { // Limite 1MB
+      throw new Error('HTML content too large for printing')
+    }
+    return this.invoke('print-receipt', htmlContent)
+  }
+
+  openDevTools() {
+    // Seulement en développement
+    if (process.env.NODE_ENV !== 'development') {
+      console.warn('DevTools disabled in production')
+      return Promise.resolve()
+    }
+    return this.invoke('open-dev-tools')
+  }
+
+  minimize() {
+    return this.invoke('window-minimize')
+  }
+
+  maximize() {
+    return this.invoke('window-maximize')
+  }
+
+  close() {
+    return this.invoke('window-close')
+  }
+
+  checkForUpdates() {
+    return this.invoke('check-for-updates')
+  }
+
+  quitAndInstall() {
+    return this.invoke('quit-and-install')
+  }
+
+  getAppVersion() {
+    return this.invoke('get-app-version')
+  }
+
+  restartApp() {
+    return this.invoke('restart-app')
+  }
+
+  // Event listeners avec nettoyage automatique
+  onUpdaterMessage(callback: (message: string) => void) {
+    if (typeof callback !== 'function') {
+      throw new Error('Callback must be a function')
+    }
+    this.on('updater-message', (_, message) => {
+      if (typeof message === 'string') {
+        callback(message)
+      }
+    })
+  }
+
+  onUpdaterError(callback: (error: string) => void) {
+    if (typeof callback !== 'function') {
+      throw new Error('Callback must be a function')
+    }
+    this.on('updater-error', (_, error) => {
+      if (typeof error === 'string') {
+        callback(error)
+      }
+    })
+  }
+
+  onUpdaterProgress(callback: (progress: any) => void) {
+    if (typeof callback !== 'function') {
+      throw new Error('Callback must be a function')
+    }
+    this.on('updater-progress', (_, progress) => {
+      if (progress && typeof progress === 'object') {
+        callback(progress)
+      }
+    })
+  }
+
+  // Méthodes utilitaires
+  getSecurityInfo() {
+    return {
+      allowedChannels: ALLOWED_CHANNELS,
+      rateLimits: Object.fromEntries(this.rateLimiter),
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false // À modifier selon votre configuration
+    }
+  }
+}
+
+// --------- Expose the secure API to the Renderer process ---------
+const secureAPI = new SecureElectronAPI()
+contextBridge.exposeInMainWorld('electronAPI', secureAPI)
 
 // --------- Preload scripts loading ---------
 function domReady(condition: DocumentReadyState[] = ['complete', 'interactive']) {

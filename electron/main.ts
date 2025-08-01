@@ -35,23 +35,54 @@ function createWindow() {
     minHeight: 600,
     icon: path.join(process.env.APP_ROOT, 'build', 'icon.ico'),
     autoHideMenuBar: true,
+    show: false, // Ne pas afficher immédiatement pour éviter le flash
+    backgroundColor: '#ffffff', // Couleur de fond par défaut
+    titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      enableRemoteModule: false, // Sécurité
+      allowRunningInsecureContent: false, // Sécurité
+      experimentalFeatures: false, // Sécurité
+      nodeIntegrationInWorker: false, // Sécurité
+      nodeIntegrationInSubFrames: false, // Sécurité
+      safeDialogs: true, // Sécurité
+      sandbox: false, // Peut être activé pour plus de sécurité si besoin
+      webSecurity: true, // Sécurité
+      spellcheck: false, // Performance - désactiver si pas nécessaire
+      backgroundThrottling: false, // Performance - garder les animations fluides
     },
   })
 
-  // Test active push message to Renderer-process.
+  // Optimisation du chargement et affichage progressif
   win.webContents.on('did-finish-load', () => {
     win?.webContents.send('main-process-message', new Date().toLocaleString())
+    // Afficher la fenêtre seulement quand le contenu est chargé (évite le flash)
+    win?.show()
+    
+    // Focus sur la fenêtre
+    if (win && !win.isDestroyed()) {
+      win.focus()
+    }
   })
+
+  // Gérer les erreurs de chargement
+  win.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+    console.error('Failed to load:', errorCode, errorDescription)
+  })
+
+  // Optimisation de la mémoire - limiter le cache
+  win.webContents.session.setSpellCheckerEnabled(false)
+  win.webContents.session.setPreloads([])
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
-    win.webContents.openDevTools()
+    // N'ouvrir DevTools qu'en développement
+    if (process.env.NODE_ENV === 'development') {
+      win.webContents.openDevTools()
+    }
   } else {
-    // win.loadFile('dist/index.html')
     win.loadFile(path.join(RENDERER_DIST, 'index.html'))
   }
 
@@ -59,6 +90,24 @@ function createWindow() {
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith('https:')) shell.openExternal(url)
     return { action: 'deny' }
+  })
+
+  // Optimisation de la mémoire
+  win.on('minimize', () => {
+    // Optionnel: réduire l'utilisation mémoire quand minimisé
+    // win?.webContents.executeJavaScript('window.gc && window.gc()')
+  })
+
+  // Gestion de la fermeture pour libérer les ressources
+  win.on('closed', () => {
+    win = null
+  })
+
+  // Performance: désactiver certaines fonctionnalités pas nécessaires
+  win.webContents.on('dom-ready', () => {
+    // Désactiver le zoom avec Ctrl+molette
+    win?.webContents.setZoomFactor(1)
+    win?.webContents.setVisualZoomLevelLimits(1, 1)
   })
 }
 

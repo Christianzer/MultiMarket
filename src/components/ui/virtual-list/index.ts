@@ -1,0 +1,1 @@
+export { default as VirtualProductList } from './VirtualProductList.vue'

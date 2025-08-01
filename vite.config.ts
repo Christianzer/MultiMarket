@@ -5,6 +5,7 @@ import tailwind from 'tailwindcss'
 import autoprefixer from 'autoprefixer'
 import electron from 'vite-plugin-electron'
 import electronRenderer from 'vite-plugin-electron-renderer'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 export default defineConfig(({ mode }) => {
   const rootDir = path.resolve(__dirname, 'src');
@@ -13,6 +14,18 @@ export default defineConfig(({ mode }) => {
   const isElectron = mode === 'electron';
 
   const plugins = [vue()];
+  
+  // Ajouter l'analyseur de bundle en mode production
+  if (production && !isElectron) {
+    plugins.push(
+      visualizer({
+        filename: 'dist/stats.html',
+        open: true,
+        gzipSize: true,
+        brotliSize: true,
+      })
+    );
+  }
   
   if (isElectron) {
     plugins.push(
@@ -28,11 +41,15 @@ export default defineConfig(({ mode }) => {
           },
           vite: {
             build: {
-              sourcemap: true,
+              sourcemap: !production,
               minify: production,
               outDir: path.resolve(__dirname, 'electron'),
               rollupOptions: {
-                external: Object.keys(require('./package.json').dependencies || {}),
+                external: [
+                  'electron',
+                  'electron-updater',
+                  ...Object.keys(require('./package.json').dependencies || {})
+                ],
               },
             },
           },
@@ -44,11 +61,14 @@ export default defineConfig(({ mode }) => {
           },
           vite: {
             build: {
-              sourcemap: 'inline',
+              sourcemap: !production,
               minify: production,
               outDir: path.resolve(__dirname, 'electron'),
               rollupOptions: {
-                external: Object.keys(require('./package.json').dependencies || {}),
+                external: [
+                  'electron',
+                  ...Object.keys(require('./package.json').dependencies || {})
+                ],
               },
             },
           },
@@ -81,6 +101,49 @@ export default defineConfig(({ mode }) => {
       sourcemap: production,
       outDir: path.resolve(rootDir, '..', 'dist'),
       emptyOutDir: true,
+      chunkSizeWarningLimit: 1000,
+      rollupOptions: {
+        output: {
+          // Optimisation des chunks pour un meilleur cache
+          manualChunks: {
+            // Vendor chunk pour les dépendances stables
+            'vendor': ['vue', 'vue-router', 'pinia'],
+            // UI chunk pour les composants d'interface
+            'ui': ['radix-vue', 'lucide-vue-next', '@radix-icons/vue'],
+            // Utils chunk pour les utilitaires
+            'utils': ['clsx', 'tailwind-merge', 'class-variance-authority', '@vueuse/core'],
+            // Forms chunk pour la validation
+            'forms': ['vee-validate', '@vee-validate/zod', 'zod'],
+            // Tables chunk pour les tableaux
+            'tables': ['@tanstack/vue-table'],
+            // Charts chunk pour les graphiques
+            'charts': ['@unovis/vue']
+          },
+          // Nommage optimisé des chunks
+          chunkFileNames: (chunkInfo) => {
+            const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk'
+            return `js/[name]-[hash].js`
+          },
+          assetFileNames: (assetInfo) => {
+            if (assetInfo.name && assetInfo.name.endsWith('.css')) {
+              return 'css/[name]-[hash][extname]'
+            }
+            return 'assets/[name]-[hash][extname]'
+          }
+        }
+      }
+    },
+    // Optimisation des dépendances
+    optimizeDeps: {
+      include: [
+        'vue', 
+        'vue-router', 
+        'pinia',
+        'lucide-vue-next',
+        'radix-vue',
+        '@vueuse/core'
+      ],
+      exclude: ['electron']
     },
     clearScreen: false,
   }

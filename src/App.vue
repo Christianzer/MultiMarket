@@ -4,7 +4,8 @@ import { onMounted } from 'vue';
 import { useAppStore } from '@/stores/app';
 import { useAuthStore } from '@/stores/auth';
 import { ScrollArea, ScrollBar } from './components/ui/scroll-area';
-import { UpdateNotification } from './components/ui/update-notification';
+import { UpdateNotification, UpdateManager } from './components/ui/update-notification';
+import { Toast } from './components/ui/toast';
 
 onMounted(async () => {
   const appStore = useAppStore();
@@ -24,7 +25,10 @@ onMounted(async () => {
     </router-view>
     <ScrollBar class="z-50" />
     
-    <!-- Notification de mise à jour -->
-    <UpdateNotification />
+    <!-- Gestionnaire de mise à jour optimisé -->
+    <UpdateManager />
+    
+    <!-- Toasts -->
+    <Toast />
   </ScrollArea>
 </template>

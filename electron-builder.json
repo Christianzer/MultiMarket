@@ -7,16 +7,30 @@
   },
   "files": [
     "dist",
-    "electron"
+    "electron",
+    "!dist/stats.html",
+    "!**/*.{ts,map,spec.js,test.js}"
+  ],
+  "extraFiles": [
+    {
+      "from": "build/icon.ico",
+      "to": "icon.ico"
+    }
   ],
   "extraMetadata": {
     "main": "electron/main.js"
   },
-  "publish": {
-    "provider": "github",
-    "owner": "Christianzer",
-    "repo": "MultiMarket"
-  },
+  "compression": "maximum",
+  "removePackageScripts": true,
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "Christianzer",
+      "repo": "MultiMarket",
+      "vPrefixedTagName": true,
+      "releaseType": "release"
+    }
+  ],
   "linux": {
     "target": "AppImage",
     "category": "Office",
@@ -28,12 +42,19 @@
     "icon": "build/icon.icns"
   },
   "win": {
-    "target": "nsis",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      }
+    ],
     "icon": "build/icon.ico",
     "verifyUpdateCodeSignature": false,
     "requestedExecutionLevel": "asInvoker",
     "signAndEditExecutable": false,
-    "legalTrademarks": "MultiMarket"
+    "legalTrademarks": "MultiMarket",
+    "compression": "7z",
+    "artifactName": "${productName}-Setup-${version}.${ext}"
   },
   "nsis": {
     "oneClick": false,
@@ -45,6 +66,22 @@
     "installerHeaderIcon": "build/icon.ico",
     "shortcutName": "MultiMarket",
     "runAfterFinish": true,
-    "deleteAppDataOnUninstall": false
-  }
+    "deleteAppDataOnUninstall": false,
+    "differentialPackage": true,
+    "packElevateHelper": false
+  },
+  "directories": {
+    "buildResources": "build",
+    "output": "release"
+  },
+  "buildDependenciesFromSource": false,
+  "nodeGypRebuild": false,
+  "npmRebuild": false,
+  "generateUpdatesFilesForAllChannels": true,
+  "releaseInfo": {
+    "releaseNotes": "Mise à jour avec optimisations de performance et sécurité améliorée.",
+    "releaseName": "${productName} v${version}"
+  },
+  "afterSign": null,
+  "afterPack": null
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
+import { computed, ref } from 'vue';
 import { buildLogoUrl } from '@/config/api';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -18,14 +19,24 @@ import {
   MoonStar,
   Menu,
   Settings,
+  RefreshCw,
 } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button';
 import { useAppStore } from '@/stores/app';
 import { useAuthStore } from '@/stores/auth';
+import { refreshService } from '@/services/refresh';
 
 const router = useRouter();
+const route = useRoute();
 const store = useAppStore();
 const authStore = useAuthStore();
+
+const isRefreshing = computed(() => refreshService.refreshing);
+
+const showRefreshButton = computed(() => {
+  const currentPath = route.path;
+  return !currentPath.includes('/caisse') && !currentPath.includes('/login');
+});
 
 const toggleMode = () => {
   store.toggleTheme();
@@ -38,6 +49,26 @@ const handleLogout = async () => {
 
 const getUserInitials = (username: string) => {
   return username.charAt(0).toUpperCase();
+};
+
+const handleRefresh = async () => {
+  if (isRefreshing.value) return; // Éviter les clics multiples
+  
+  const currentPath = route.path;
+  
+  try {
+    const result = await refreshService.refreshCurrentPage(currentPath);
+    
+    if (result.success) {
+      // Optionnel: montrer une notification de succès
+      console.log(`🎉 ${result.message}`);
+    } else {
+      console.warn(`⚠️ ${result.message}`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Erreur inattendue lors de l\'actualisation:', error);
+  }
 };
 </script>
 
@@ -52,6 +83,16 @@ const getUserInitials = (username: string) => {
       <Menu class="transition-all duration-500 text-black" />
     </Button>
     <div class="flex items-center">
+      <Button 
+        v-if="showRefreshButton"
+        variant="outline" 
+        class="border-0 p-[6px] w-8 h-8 mr-2" 
+        @click="handleRefresh"
+        :disabled="isRefreshing"
+        :title="isRefreshing ? 'Actualisation en cours...' : 'Actualiser les données'"
+      >
+        <RefreshCw class="h-4 w-4" :class="{ 'animate-spin': isRefreshing }" />
+      </Button>
       <Button variant="outline" class="border-0 p-[6px] w-8 h-8" @click="toggleMode">
         <Sun v-if="store.isDark" />
         <MoonStar v-else />
