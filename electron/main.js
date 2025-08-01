@@ -18,10 +18,10 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    icon: path.join(process.env.VITE_PUBLIC, "favicon.ico"),
+    icon: path.join(process.env.APP_ROOT, "build", "icon.ico"),
     autoHideMenuBar: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.ts"),
+      preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true
     }
@@ -41,36 +41,59 @@ function createWindow() {
     return { action: "deny" };
   });
 }
-autoUpdater.checkForUpdatesAndNotify();
-autoUpdater.on("checking-for-update", () => {
-  console.log("Checking for update...");
-});
-autoUpdater.on("update-available", (info) => {
-  console.log("Update available:", info);
-});
-autoUpdater.on("update-not-available", (info) => {
-  console.log("Update not available:", info);
-});
-autoUpdater.on("error", (err) => {
-  console.log("Error in auto-updater:", err);
-});
-autoUpdater.on("download-progress", (progressObj) => {
-  let log_message = `Download speed: ${progressObj.bytesPerSecond}`;
-  log_message += ` - Downloaded ${progressObj.percent}%`;
-  log_message += ` (${progressObj.transferred}/${progressObj.total})`;
-  console.log(log_message);
-});
-autoUpdater.on("update-downloaded", (info) => {
-  console.log("Update downloaded:", info);
-  autoUpdater.quitAndInstall();
-});
+function setupAutoUpdater() {
+  if (process.env.NODE_ENV === "production" && !process.env.VITE_DEV_SERVER_URL) {
+    console.log("Setting up auto-updater for production...");
+    autoUpdater.logger = console;
+    autoUpdater.checkForUpdatesAndNotify = true;
+    autoUpdater.on("checking-for-update", () => {
+      console.log("Checking for update...");
+      win == null ? void 0 : win.webContents.send("updater-message", "Vérification des mises à jour...");
+    });
+    autoUpdater.on("update-available", (info) => {
+      console.log("Update available:", info);
+      win == null ? void 0 : win.webContents.send("updater-message", "Une mise à jour est disponible, veuillez mettre à jour l'application et redémarrer");
+    });
+    autoUpdater.on("update-not-available", (info) => {
+      console.log("Update not available:", info);
+      win == null ? void 0 : win.webContents.send("updater-message", "Aucune mise à jour disponible");
+    });
+    autoUpdater.on("error", (err) => {
+      console.log("Error in auto-updater:", err);
+      win == null ? void 0 : win.webContents.send("updater-error", `Erreur de mise à jour: ${err.message}`);
+    });
+    autoUpdater.on("download-progress", (progressObj) => {
+      let log_message = `Vitesse: ${Math.round(progressObj.bytesPerSecond / 1024)} KB/s`;
+      log_message += ` - Téléchargé ${Math.round(progressObj.percent)}%`;
+      log_message += ` (${Math.round(progressObj.transferred / 1024 / 1024)} MB / ${Math.round(progressObj.total / 1024 / 1024)} MB)`;
+      console.log(log_message);
+      win == null ? void 0 : win.webContents.send("updater-progress", {
+        percent: Math.round(progressObj.percent),
+        transferred: Math.round(progressObj.transferred / 1024 / 1024),
+        total: Math.round(progressObj.total / 1024 / 1024),
+        speed: Math.round(progressObj.bytesPerSecond / 1024)
+      });
+    });
+    autoUpdater.on("update-downloaded", (info) => {
+      console.log("Update downloaded:", info);
+      win == null ? void 0 : win.webContents.send("updater-message", "Mise à jour téléchargée. L'application va redémarrer automatiquement dans quelques secondes...");
+      setTimeout(() => {
+        autoUpdater.quitAndInstall();
+      }, 5e3);
+    });
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
+        console.log("Auto-updater check failed:", err.message);
+        win == null ? void 0 : win.webContents.send("updater-error", `Impossible de vérifier les mises à jour: ${err.message}`);
+      });
+    }, 5e3);
+  } else {
+    console.log("Auto-updater disabled in development mode");
+  }
+}
 app.whenReady().then(() => {
   createWindow();
-  if (!process.env.VITE_DEV_SERVER_URL) {
-    setTimeout(() => {
-      autoUpdater.checkForUpdatesAndNotify();
-    }, 5e3);
-  }
+  setupAutoUpdater();
 });
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
@@ -241,15 +264,34 @@ ipcMain.handle("set-printer", async (event, printerName) => {
 });
 ipcMain.handle("check-for-updates", async () => {
   try {
-    await autoUpdater.checkForUpdatesAndNotify();
-    return { success: true };
+    if (process.env.NODE_ENV === "production" && !process.env.VITE_DEV_SERVER_URL) {
+      console.log("Manual update check requested");
+      const result = await autoUpdater.checkForUpdatesAndNotify();
+      return { success: true, result };
+    } else {
+      return { success: false, error: "Auto-updater is disabled in development mode" };
+    }
   } catch (error) {
     console.error("Error checking for updates:", error);
     return { success: false, error: error.message };
   }
 });
 ipcMain.handle("quit-and-install", () => {
-  autoUpdater.quitAndInstall();
+  try {
+    console.log("Quit and install requested");
+    autoUpdater.quitAndInstall();
+    return { success: true };
+  } catch (error) {
+    console.error("Error during quit and install:", error);
+    return { success: false, error: error.message };
+  }
+});
+ipcMain.handle("get-app-version", () => {
+  return app.getVersion();
+});
+ipcMain.handle("restart-app", () => {
+  app.relaunch();
+  app.exit();
 });
 export {
   MAIN_DIST,
