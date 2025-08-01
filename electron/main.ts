@@ -165,14 +165,14 @@ app.on('activate', () => {
 
 // --------- IPC Handlers for Printing and Window Controls ---------
 
-// Gestionnaire pour l'impression de reçus POS
+// Gestionnaire pour l'impression de reçus avec dialogue Windows
 ipcMain.handle('print-receipt', async (event, htmlContent: string) => {
   try {
-    // Créer une fenêtre cachée pour l'impression POS
+    // Créer une fenêtre pour l'impression
     const printWindow = new BrowserWindow({
-      width: 300, // Largeur exacte pour imprimante POS 80mm
-      height: 800, // Hauteur plus grande pour les longs reçus
-      show: false, // En développement, mettre à true pour déboguer
+      width: 800, // Largeur standard
+      height: 600, // Hauteur standard
+      show: false, // Masquer la fenêtre pendant le chargement
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true
@@ -190,66 +190,46 @@ ipcMain.handle('print-receipt', async (event, htmlContent: string) => {
       })
     })
 
-    // Options d'impression optimisées pour imprimantes POS
+    // Options d'impression avec dialogue Windows
     const printOptions: any = {
-      silent: true, // Impression silencieuse sans dialogue
+      silent: false, // Ouvrir le dialogue d'impression Windows
       printBackground: true, // Inclure les arrière-plans
-      color: false, // Impression en noir et blanc pour POS
+      color: true, // Permettre l'impression couleur
       margins: {
-        marginType: 'custom' as const,
-        top: 0,    // Pas de marge haute
-        bottom: 0, // Pas de marge basse  
-        left: 0,   // Pas de marge gauche
-        right: 0   // Pas de marge droite
+        marginType: 'default' as const // Marges par défaut
       },
-      pageSize: {
-        width: 79000,  // 79mm en microns (légèrement moins que 80mm pour éviter la coupure)
-        height: 297000 // Hauteur variable automatique (A4 = 297mm, sera ajustée automatiquement)
-      },
-      scaleFactor: 100, // Échelle 100% pour taille réelle
-      landscape: false, // Portrait pour reçu
-      copies: 1,        // Une seule copie
-      pageRanges: {},   // Toutes les pages
-      duplexMode: 'simplex', // Impression simple face
-      collate: true,
-      // Paramètres spécifiques POS
+      landscape: false, // Portrait par défaut
+      copies: 1, // Une seule copie par défaut
       headerFooter: false, // Pas d'en-tête/pied de page automatique
       shouldPrintBackgrounds: true,
       shouldPrintSelectionOnly: false
     }
 
-    // Utiliser l'imprimante sélectionnée si disponible
-    if (selectedPrinter) {
-      printOptions.deviceName = selectedPrinter
-      console.log('Impression vers:', selectedPrinter)
-    } else {
-      console.log('Aucune imprimante POS sélectionnée, utilisation de l\'imprimante par défaut')
-    }
-
-    // Imprimer avec gestion d'erreur améliorée
+    // Lancer l'impression avec le dialogue Windows
+    console.log('Ouverture du dialogue d\'impression Windows...')
     const result = await printWindow.webContents.print(printOptions)
     
-    // Log pour déboguer en développement
-    console.log('Impression POS:', result ? 'Réussie' : 'Échouée ou Annulée')
+    // Log pour déboguer
+    console.log('Impression:', result ? 'Réussie' : 'Annulée par l\'utilisateur')
     
     // Fermer la fenêtre d'impression après un délai
     setTimeout(() => {
       if (!printWindow.isDestroyed()) {
         printWindow.close()
       }
-    }, 2000) // Délai plus long pour s'assurer que l'impression est terminée
+    }, 1000)
     
     return { 
       success: true, 
       printed: result,
-      message: result ? 'Reçu imprimé avec succès' : 'Impression annulée ou échouée'
+      message: result ? 'Document imprimé avec succès' : 'Impression annulée par l\'utilisateur'
     }
   } catch (error) {
-    console.error('Erreur lors de l\'impression POS:', error)
+    console.error('Erreur lors de l\'impression:', error)
     return { 
       success: false, 
       error: (error as Error).message,
-      message: 'Erreur d\'impression - Vérifiez que l\'imprimante POS est connectée'
+      message: 'Erreur d\'impression - Vérifiez que votre imprimante est connectée'
     }
   }
 })
@@ -284,59 +264,8 @@ ipcMain.handle('window-close', () => {
   }
 })
 
-// Variables pour gérer l'imprimante POS sélectionnée
-let selectedPrinter: string | null = null
-
-// Gestionnaire pour lister les imprimantes disponibles
-ipcMain.handle('get-printers', async () => {
-  try {
-    if (win) {
-      const printers = await win.webContents.getPrintersAsync()
-      
-      // Filtrer et identifier les imprimantes POS probables
-      const posKeywords = ['pos', 'thermal', 'receipt', 'tm', 'epson', 'star', 'citizen', 'bixolon', 'zebra', 'esc']
-      
-      const printersWithType = printers.map(printer => ({
-        ...printer,
-        isPOS: posKeywords.some(keyword => 
-          printer.name.toLowerCase().includes(keyword) || 
-          printer.description?.toLowerCase().includes(keyword)
-        )
-      }))
-      
-      console.log('Imprimantes détectées:', printersWithType.length)
-      printersWithType.forEach(p => {
-        console.log(`- ${p.name} ${p.isPOS ? '(POS)' : '(Standard)'}: ${p.description}`)
-      })
-      
-      return {
-        success: true,
-        printers: printersWithType,
-        selectedPrinter
-      }
-    }
-    return { success: false, error: 'Fenêtre non disponible' }
-  } catch (error) {
-    console.error('Erreur lors de la récupération des imprimantes:', error)
-    return { 
-      success: false, 
-      error: (error as Error).message,
-      printers: []
-    }
-  }
-})
-
-// Gestionnaire pour définir l'imprimante POS à utiliser
-ipcMain.handle('set-printer', async (event, printerName: string) => {
-  try {
-    selectedPrinter = printerName
-    console.log('Imprimante POS sélectionnée:', printerName)
-    return { success: true, printer: printerName }
-  } catch (error) {
-    console.error('Erreur lors de la sélection de l\'imprimante:', error)
-    return { success: false, error: (error as Error).message }
-  }
-})
+// Note: Les gestionnaires d'imprimantes POS spécifiques ont été supprimés
+// car nous utilisons maintenant le dialogue d'impression Windows standard
 
 // IPC handlers for auto-updater
 ipcMain.handle('check-for-updates', async () => {

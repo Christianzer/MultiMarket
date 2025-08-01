@@ -28,17 +28,16 @@ export const buildApiUrl = (endpoint: string): string => {
 // Fonction utilitaire pour construire l'URL complète d'un logo
 export const buildLogoUrl = (logoPath: string | null | undefined): string | null => {
   if (!logoPath) return null
-  
-  // Si c'est déjà une URL complète, la retourner telle quelle
+
   if (logoPath.startsWith('http://') || logoPath.startsWith('https://')) {
     return logoPath
   }
-  
-  // Construire l'URL complète en utilisant la base URL sans /api
-  const baseUrl = API_CONFIG.baseURL.replace(/\/api$/, '') // Supprimer /api final
+
+  const baseUrl = API_CONFIG.baseURL.replace(/\/(index\.php)?\/api$/, '')
   const cleanPath = logoPath.startsWith('/') ? logoPath : `/${logoPath}`
   return `${baseUrl}${cleanPath}`
 }
+
 
 // Types pour les réponses API
 export interface ApiResponse<T = any> {

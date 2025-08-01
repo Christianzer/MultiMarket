@@ -19,10 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return ipcRenderer.invoke(channel, ...omit)
   },
 
-  // API spécifique pour l'application de caisse
+  // API spécifique pour l'application
   printReceipt: (htmlContent: string) => ipcRenderer.invoke('print-receipt', htmlContent),
-  getPrinters: () => ipcRenderer.invoke('get-printers'),
-  setPrinter: (printerName: string) => ipcRenderer.invoke('set-printer', printerName),
   openDevTools: () => ipcRenderer.invoke('open-dev-tools'),
   minimize: () => ipcRenderer.invoke('window-minimize'),
   maximize: () => ipcRenderer.invoke('window-maximize'),
