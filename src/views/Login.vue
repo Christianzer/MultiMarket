@@ -45,7 +45,7 @@ const onSubmit = form.handleSubmit(async (values) => {
     } else if (userRole === 'admin') {
       router.push('/dashboard/admin');
     } else if (userRole === 'caissier') {
-      router.push('/dashboard/caissier');
+      router.push('/dashboard/caisse');
     } else {
       router.push('/dashboard');
     }

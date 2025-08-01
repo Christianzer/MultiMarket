@@ -9,7 +9,11 @@
     "dist",
     "electron"
   ],
-  "icon": "build/icon",
+  "publish": {
+    "provider": "github",
+    "owner": "Christianzer",
+    "repo": "MultiMarket"
+  },
   "linux": {
     "target": "AppImage",
     "category": "Office",
@@ -33,6 +37,7 @@
     "createDesktopShortcut": true,
     "createStartMenuShortcut": true,
     "installerIcon": "build/icon.ico",
-    "uninstallerIcon": "build/icon.ico"
+    "uninstallerIcon": "build/icon.ico",
+    "installerHeaderIcon": "build/icon.ico"
   }
 }

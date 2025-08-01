@@ -169,4 +169,9 @@ export const api = {
     bulkRestock: (data: any) => apiService.post('/restock/bulk', data),
     delete: (id: number) => apiService.delete(`/restocks/${id}`),
   },
+
+  // Tableau de bord
+  dashboard: {
+    getData: () => apiService.get('/dashboard'),
+  },
 }

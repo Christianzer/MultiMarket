@@ -16,14 +16,10 @@ export interface CreateSupermarketRequest {
   code: string
   address: string
   phone: string
-  primaryColor: string
-  secondaryColor: string
 }
 
 export interface UpdateSupermarketRequest {
   name: string
   address: string
   phone: string
-  primaryColor: string
-  secondaryColor: string
 }

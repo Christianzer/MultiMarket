@@ -60,7 +60,7 @@ const loadUsers = async () => {
   try {
     loading.value = true
     const response = await api.users.getAll()
-    users.value = (response.data as any[]) || []
+    users.value = (response as any[]) || []
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des utilisateurs'
   } finally {
@@ -71,7 +71,7 @@ const loadUsers = async () => {
 const loadSupermarkets = async () => {
   try {
     const response = await api.supermarkets.getAll()
-    supermarkets.value = (response.data as any[]) || []
+    supermarkets.value = (response as any[]) || []
   } catch (err: any) {
     console.error('Erreur lors du chargement des supermarchés:', err)
   }

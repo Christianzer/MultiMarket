@@ -79,12 +79,6 @@ export const ROLE_MENUS: Record<string, MenuGroup[]> = {
       name: 'Caisse',
       items: [
         {
-          title: 'Tableau de bord',
-          path: '/dashboard/caissier',
-          icon: 'LayoutDashboard',
-          roles: ['caissier']
-        },
-        {
           title: 'Caisse',
           path: '/dashboard/caisse',
           icon: 'Calculator',

@@ -3,9 +3,10 @@ export interface Supermarket {
   name: string
   code: string
   logo: string
-  primaryColor: string
-  secondaryColor: string
+  primaryColor: string | null
+  secondaryColor: string | null
 }
+
 
 export interface User {
   id: number

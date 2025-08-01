@@ -87,8 +87,8 @@ export const useAuthStore = defineStore('auth', {
         const appStore = useAppStore()
         appStore.setBranding({
           logo: buildLogoUrl(this.user.supermarket.logo) || '/favicon.ico',
-          primaryColor: this.user.supermarket.primaryColor,
-          secondaryColor: this.user.supermarket.secondaryColor,
+          primaryColor: this.user.supermarket.primaryColor || 'hsl(263.4,70%,50.4%)',
+          secondaryColor: this.user.supermarket.secondaryColor || 'hsl(215,27.9%,16.9%)',
           supermarketName: this.user.supermarket.name
         })
       }

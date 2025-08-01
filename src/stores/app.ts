@@ -101,17 +101,12 @@ export const useAppStore = defineStore('app', {
     applyCustomColors() {
       const root = document.documentElement;
       
-      if (this.branding) {
-        // Appliquer les couleurs personnalisées au format hex (#228B22, #FFD700)
-        root.style.setProperty('--primary', this.hexToHsl(this.branding.primaryColor));
-        root.style.setProperty('--secondary', this.hexToHsl(this.branding.secondaryColor));
-        root.style.setProperty('--accent', this.hexToHsl(this.branding.primaryColor));
-      } else {
+     
         // Réinitialiser aux couleurs par défaut
         root.style.removeProperty('--primary');
         root.style.removeProperty('--secondary');
         root.style.removeProperty('--accent');
-      }
+      
     },
     hexToHsl(hex: string): string {
       // Convertir hex (#228B22, #FFD700) en HSL pour compatibilité avec Tailwind

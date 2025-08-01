@@ -28,7 +28,7 @@ const loadSales = async () => {
     error.value = ''
     
     const response = await api.sales.getList()
-    salesData.value = (response.data as SalesListResponse) || null
+    salesData.value = (response as SalesListResponse) || null
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des ventes'
   } finally {

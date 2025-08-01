@@ -28,17 +28,13 @@ const createForm = ref<CreateSupermarketRequest>({
   name: '',
   code: '',
   address: '',
-  phone: '',
-  primaryColor: '#228B22',
-  secondaryColor: '#FFD700'
+  phone: ''
 })
 
 const editForm = ref<UpdateSupermarketRequest>({
   name: '',
   address: '',
-  phone: '',
-  primaryColor: '#228B22',
-  secondaryColor: '#FFD700'
+  phone: ''
 })
 
 const logoFile = ref<File | null>(null)
@@ -50,7 +46,7 @@ const loadSupermarkets = async () => {
     loading.value = true
     const response = await api.supermarkets.getAll()
     console.log('Supermarkets loaded:', response)
-    supermarkets.value = response.data as Supermarket[] || []
+    supermarkets.value = response as Supermarket[] || []
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des supermarchés'
   } finally {
@@ -63,9 +59,7 @@ const openCreateModal = () => {
     name: '',
     code: '',
     address: '',
-    phone: '',
-    primaryColor: '#228B22',
-    secondaryColor: '#FFD700'
+    phone: ''
   }
   logoFile.value = null
   logoPreview.value = null
@@ -77,9 +71,7 @@ const openEditModal = (supermarket: Supermarket) => {
   editForm.value = {
     name: supermarket.name,
     address: supermarket.address,
-    phone: supermarket.phone,
-    primaryColor: supermarket.primaryColor,
-    secondaryColor: supermarket.secondaryColor
+    phone: supermarket.phone
   }
   logoFile.value = null
   logoPreview.value = null
@@ -117,9 +109,9 @@ const createSupermarket = async () => {
     console.log('Supermarket created:', response)
     
     // Upload logo if provided
-    if (logoFile.value && (response.data as any)?.id) {
+    if (logoFile.value && (response as any)?.id) {
       console.log("Fichier logo :", logoFile.value)
-      await api.supermarkets.uploadLogo((response.data as any).id, logoFile.value)
+      await api.supermarkets.uploadLogo((response as any).id, logoFile.value)
     }
     
     await loadSupermarkets()
@@ -234,18 +226,6 @@ onMounted(() => {
             </div>
           </div>
 
-          <!-- Couleurs de marque -->
-          <div class="flex items-center space-x-2">
-            <span class="text-sm text-muted-foreground">Couleurs:</span>
-            <div 
-              class="w-4 h-4 rounded-full border" 
-              :style="{ backgroundColor: supermarket.primaryColor }"
-            ></div>
-            <div 
-              class="w-4 h-4 rounded-full border" 
-              :style="{ backgroundColor: supermarket.secondaryColor }"
-            ></div>
-          </div>
 
           <!-- Actions -->
           <div class="flex space-x-2 pt-2">
@@ -308,17 +288,6 @@ onMounted(() => {
             <Input id="create-phone" v-model="createForm.phone" placeholder="+225 27 20 15 25 35" />
           </div>
           
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-2">
-              <Label for="create-primary">Couleur Primaire</Label>
-              <Input id="create-primary" type="color" v-model="createForm.primaryColor" />
-            </div>
-            <div class="space-y-2">
-              <Label for="create-secondary">Couleur Secondaire</Label>
-              <Input id="create-secondary" type="color" v-model="createForm.secondaryColor" />
-            </div>
-          </div>
-          
           <div class="space-y-2">
             <Label for="create-logo">Logo</Label>
             <Input id="create-logo" type="file" accept="image/*" @change="handleLogoUpload" />
@@ -364,17 +333,6 @@ onMounted(() => {
           <div class="space-y-2">
             <Label for="edit-phone">Téléphone</Label>
             <Input id="edit-phone" v-model="editForm.phone" />
-          </div>
-          
-          <div class="grid grid-cols-2 gap-4">
-            <div class="space-y-2">
-              <Label for="edit-primary">Couleur Primaire</Label>
-              <Input id="edit-primary" type="color" v-model="editForm.primaryColor" />
-            </div>
-            <div class="space-y-2">
-              <Label for="edit-secondary">Couleur Secondaire</Label>
-              <Input id="edit-secondary" type="color" v-model="editForm.secondaryColor" />
-            </div>
           </div>
           
           <div class="space-y-2">
@@ -444,17 +402,6 @@ onMounted(() => {
             </div>
           </div>
           
-          <div class="flex items-center space-x-2">
-            <span class="text-sm text-muted-foreground">Couleurs:</span>
-            <div 
-              class="w-6 h-6 rounded-full border" 
-              :style="{ backgroundColor: selectedSupermarket.primaryColor }"
-            ></div>
-            <div 
-              class="w-6 h-6 rounded-full border" 
-              :style="{ backgroundColor: selectedSupermarket.secondaryColor }"
-            ></div>
-          </div>
         </div>
         
         <DialogFooter class="pt-4">

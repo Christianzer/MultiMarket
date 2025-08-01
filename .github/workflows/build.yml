@@ -31,3 +31,26 @@ jobs:
       env:
         # Utiliser le Personal Access Token créé précédemment
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
+    
+    - name: Upload Windows artifacts with latest.yml
+      if: matrix.os == 'windows-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-release
+        path: |
+          release/*.exe
+          release/latest.yml
+    
+    - name: Upload macOS artifacts
+      if: matrix.os == 'macos-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-release
+        path: release/*.dmg
+    
+    - name: Upload Linux artifacts
+      if: matrix.os == 'ubuntu-latest'
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-release
+        path: release/*.AppImage

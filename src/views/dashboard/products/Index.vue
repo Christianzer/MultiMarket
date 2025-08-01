@@ -40,7 +40,7 @@ const loadProducts = async () => {
   try {
     loading.value = true
     const response = await api.products.getAll()
-    products.value = (response as any)?.data || response || []
+    products.value = (response as any[]) || []
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des produits'
   } finally {
@@ -317,7 +317,7 @@ onMounted(async () => {
               <div class="font-medium text-info">{{ (product as any).vendu || 0 }}</div>
             </TableCell>
             <TableCell>
-              <div class="font-medium text-secondary">{{ (product as any).restant || 0 }}</div>
+              <div class="font-medium text-destructive">{{ (product as any).restant || 0 }}</div>
             </TableCell>
             <TableCell class="text-center">
               <div class="flex justify-center space-x-1">
