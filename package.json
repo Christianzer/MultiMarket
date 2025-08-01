@@ -1,6 +1,6 @@
 {
   "name": "multimarket",
-  "version": "3.2.4",
+  "version": "3.2.5",
   "private": true,
   "type": "module",
   "description": "Application de gestion multi-supermarchés : gestion des stocks, ventes, utilisateurs, fournisseurs et bien plus. Conçue pour centraliser et optimiser l'activité de plusieurs points de vente.",
@@ -12,8 +12,11 @@
   "scripts": {
     "dev": "vite",
     "build": "npm run clean && npm run build-only && electron-builder --win --x64 --publish=always",
+    "build:linux": "npm run clean && npm run build-only && electron-builder --linux --publish=always",
+    "build:mac": "npm run clean && npm run build-only && electron-builder --mac --publish=always",
+    "build:win": "npm run clean && npm run build-only && electron-builder --win --x64 --publish=always",
     "preview": "vite preview",
-    "build-only": "vite build --mode production || exit 0",
+    "build-only": "vite build --mode production && vite build --mode electron || exit 0",
     "type-check": "vue-tsc --build --force",
     "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
     "format": "prettier --write src/",

@@ -7,9 +7,10 @@
   },
   "files": [
     "dist",
-    "electron",
+    "electron/*.js",
     "!dist/stats.html",
-    "!**/*.{ts,map,spec.js,test.js}"
+    "!**/*.{ts,spec.js,test.js}",
+    "!electron/*.map"
   ],
   "extraFiles": [
     {
