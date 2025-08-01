@@ -82,16 +82,6 @@ const getUserInitials = (username: string) => {
           <DropdownMenuLabel v-if="authStore.currentUser">
             {{ authStore.currentUser.username }}
           </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem @click="router.push('/dashboard/user')">
-            <User class="mr-2 h-4 w-4" />
-            <span>Profil</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem @click="router.push('/dashboard/settings')">
-            <Settings class="mr-2 h-4 w-4" />
-            <span>Paramètres</span>
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
           <DropdownMenuItem @click="handleLogout" class="text-destructive focus:text-destructive">
             <LogOut class="mr-2 h-4 w-4" />
             <span>Se déconnecter</span>

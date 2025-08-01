@@ -108,12 +108,12 @@ app.on("activate", () => {
 ipcMain.handle("print-receipt", async (event, htmlContent) => {
   try {
     const printWindow = new BrowserWindow({
-      width: 300,
-      // Largeur exacte pour imprimante POS 80mm
-      height: 800,
-      // Hauteur plus grande pour les longs reçus
+      width: 800,
+      // Largeur standard
+      height: 600,
+      // Hauteur standard
       show: false,
-      // En développement, mettre à true pour déboguer
+      // Masquer la fenêtre pendant le chargement
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true
@@ -126,70 +126,44 @@ ipcMain.handle("print-receipt", async (event, htmlContent) => {
       });
     });
     const printOptions = {
-      silent: true,
-      // Impression silencieuse sans dialogue
+      silent: false,
+      // Ouvrir le dialogue d'impression Windows
       printBackground: true,
       // Inclure les arrière-plans
-      color: false,
-      // Impression en noir et blanc pour POS
+      color: true,
+      // Permettre l'impression couleur
       margins: {
-        marginType: "custom",
-        top: 0,
-        // Pas de marge haute
-        bottom: 0,
-        // Pas de marge basse  
-        left: 0,
-        // Pas de marge gauche
-        right: 0
-        // Pas de marge droite
+        marginType: "default"
+        // Marges par défaut
       },
-      pageSize: {
-        width: 79e3,
-        // 79mm en microns (légèrement moins que 80mm pour éviter la coupure)
-        height: 297e3
-        // Hauteur variable automatique (A4 = 297mm, sera ajustée automatiquement)
-      },
-      scaleFactor: 100,
-      // Échelle 100% pour taille réelle
       landscape: false,
-      // Portrait pour reçu
+      // Portrait par défaut
       copies: 1,
-      // Une seule copie
-      pageRanges: {},
-      // Toutes les pages
-      duplexMode: "simplex",
-      // Impression simple face
-      collate: true,
-      // Paramètres spécifiques POS
+      // Une seule copie par défaut
       headerFooter: false,
       // Pas d'en-tête/pied de page automatique
       shouldPrintBackgrounds: true,
       shouldPrintSelectionOnly: false
     };
-    if (selectedPrinter) {
-      printOptions.deviceName = selectedPrinter;
-      console.log("Impression vers:", selectedPrinter);
-    } else {
-      console.log("Aucune imprimante POS sélectionnée, utilisation de l'imprimante par défaut");
-    }
+    console.log("Ouverture du dialogue d'impression Windows...");
     const result = await printWindow.webContents.print(printOptions);
-    console.log("Impression POS:", result ? "Réussie" : "Échouée ou Annulée");
+    console.log("Impression:", result ? "Réussie" : "Annulée par l'utilisateur");
     setTimeout(() => {
       if (!printWindow.isDestroyed()) {
         printWindow.close();
       }
-    }, 2e3);
+    }, 1e3);
     return {
       success: true,
       printed: result,
-      message: result ? "Reçu imprimé avec succès" : "Impression annulée ou échouée"
+      message: result ? "Document imprimé avec succès" : "Impression annulée par l'utilisateur"
     };
   } catch (error) {
-    console.error("Erreur lors de l'impression POS:", error);
+    console.error("Erreur lors de l'impression:", error);
     return {
       success: false,
       error: error.message,
-      message: "Erreur d'impression - Vérifiez que l'imprimante POS est connectée"
+      message: "Erreur d'impression - Vérifiez que votre imprimante est connectée"
     };
   }
 });
@@ -215,51 +189,6 @@ ipcMain.handle("window-maximize", () => {
 ipcMain.handle("window-close", () => {
   if (win) {
     win.close();
-  }
-});
-let selectedPrinter = null;
-ipcMain.handle("get-printers", async () => {
-  try {
-    if (win) {
-      const printers = await win.webContents.getPrintersAsync();
-      const posKeywords = ["pos", "thermal", "receipt", "tm", "epson", "star", "citizen", "bixolon", "zebra", "esc"];
-      const printersWithType = printers.map((printer) => ({
-        ...printer,
-        isPOS: posKeywords.some(
-          (keyword) => {
-            var _a;
-            return printer.name.toLowerCase().includes(keyword) || ((_a = printer.description) == null ? void 0 : _a.toLowerCase().includes(keyword));
-          }
-        )
-      }));
-      console.log("Imprimantes détectées:", printersWithType.length);
-      printersWithType.forEach((p) => {
-        console.log(`- ${p.name} ${p.isPOS ? "(POS)" : "(Standard)"}: ${p.description}`);
-      });
-      return {
-        success: true,
-        printers: printersWithType,
-        selectedPrinter
-      };
-    }
-    return { success: false, error: "Fenêtre non disponible" };
-  } catch (error) {
-    console.error("Erreur lors de la récupération des imprimantes:", error);
-    return {
-      success: false,
-      error: error.message,
-      printers: []
-    };
-  }
-});
-ipcMain.handle("set-printer", async (event, printerName) => {
-  try {
-    selectedPrinter = printerName;
-    console.log("Imprimante POS sélectionnée:", printerName);
-    return { success: true, printer: printerName };
-  } catch (error) {
-    console.error("Erreur lors de la sélection de l'imprimante:", error);
-    return { success: false, error: error.message };
   }
 });
 ipcMain.handle("check-for-updates", async () => {
