@@ -60,7 +60,17 @@ const loadUsers = async () => {
   try {
     loading.value = true
     const response = await api.users.getAll()
-    users.value = (response as any[]) || []
+    
+    // Vérifier que la réponse contient les données attendues
+    if (response && response.data && Array.isArray(response.data)) {
+      users.value = response.data as UserType[]
+    } else if (response && Array.isArray(response)) {
+      // Si la réponse est directement un tableau
+      users.value = response as unknown as UserType[]
+    } else {
+      users.value = []
+      console.warn('Format de données inattendu pour les utilisateurs')
+    }
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des utilisateurs'
   } finally {
@@ -71,7 +81,17 @@ const loadUsers = async () => {
 const loadSupermarkets = async () => {
   try {
     const response = await api.supermarkets.getAll()
-    supermarkets.value = (response as any[]) || []
+    
+    // Vérifier que la réponse contient les données attendues
+    if (response && response.data && Array.isArray(response.data)) {
+      supermarkets.value = response.data as Supermarket[]
+    } else if (response && Array.isArray(response)) {
+      // Si la réponse est directement un tableau
+      supermarkets.value = response as unknown as Supermarket[]
+    } else {
+      supermarkets.value = []
+      console.warn('Format de données inattendu pour les supermarchés')
+    }
   } catch (err: any) {
     console.error('Erreur lors du chargement des supermarchés:', err)
   }

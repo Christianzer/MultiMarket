@@ -6,7 +6,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Store, Users, Package, TrendingUp, DollarSign, Calendar, BarChart3, Clock, Trophy } from 'lucide-vue-next'
 import { api } from '@/services/api'
 import type { AdminDashboardData } from '@/types/dashboard'
-import { mockAdminDashboardData } from '@/services/mock-admin-data'
 
 const dashboardData = ref<AdminDashboardData | null>(null)
 const loading = ref(false)
@@ -17,15 +16,20 @@ const loadDashboardData = async () => {
     loading.value = true
     error.value = ''
     
-    // Utiliser les données mock pour le test
-    // TODO: Remplacer par l'appel API réel
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Simuler un délai
-    dashboardData.value = mockAdminDashboardData
+    const response = await api.dashboard.getData()
     
-    // const response = await api.dashboard.getData()
-    // dashboardData.value = response as unknown as AdminDashboardData
+    // Vérifier que la réponse contient les données attendues
+    if (response && response.data) {
+      dashboardData.value = response.data as AdminDashboardData
+    } else if (response && typeof response === 'object' && 'type' in response) {
+      // Si la réponse est directement les données (sans wrapper)
+      dashboardData.value = response as unknown as AdminDashboardData
+    } else {
+      throw new Error('Format de données inattendu de l\'API')
+    }
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des données'
+    console.error('Erreur dashboard admin:', err)
   } finally {
     loading.value = false
   }

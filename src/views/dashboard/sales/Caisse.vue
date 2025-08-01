@@ -45,7 +45,17 @@ const loadProducts = async () => {
     productsError.value = ''
     
     const response = await api.products.getAll()
-    products.value = (response as any[]) || []
+    
+    // Vérifier que la réponse contient les données attendues
+    if (response && response.data && Array.isArray(response.data)) {
+      products.value = response.data as ProductSearchResult[]
+    } else if (response && Array.isArray(response)) {
+      // Si la réponse est directement un tableau
+      products.value = response as unknown as ProductSearchResult[]
+    } else {
+      products.value = []
+      console.warn('Format de données inattendu pour les produits')
+    }
   } catch (err: any) {
     productsError.value = err.message || 'Erreur lors du chargement des produits'
   } finally {

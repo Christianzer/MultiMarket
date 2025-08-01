@@ -28,7 +28,17 @@ const loadSales = async () => {
     error.value = ''
     
     const response = await api.sales.getList()
-    salesData.value = (response as SalesListResponse) || null
+    
+    // Vérifier que la réponse contient les données attendues
+    if (response && response.data) {
+      salesData.value = response.data as SalesListResponse
+    } else if (response && typeof response === 'object' && 'sales' in response) {
+      // Si la réponse est directement les données
+      salesData.value = response as unknown as SalesListResponse
+    } else {
+      salesData.value = null
+      console.warn('Format de données inattendu pour les ventes')
+    }
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des ventes'
   } finally {

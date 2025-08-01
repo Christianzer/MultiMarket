@@ -17,7 +17,16 @@ const loadDashboardData = async () => {
     error.value = ''
     
     const response = await api.dashboard.getData()
-    dashboardData.value = response as SuperAdminDashboardData
+    
+    // Vérifier que la réponse contient les données attendues
+    if (response && response.data) {
+      dashboardData.value = response.data as SuperAdminDashboardData
+    } else if (response && typeof response === 'object' && 'type' in response) {
+      // Si la réponse est directement les données (sans wrapper)
+      dashboardData.value = response as unknown as SuperAdminDashboardData
+    } else {
+      throw new Error('Format de données inattendu de l\'API')
+    }
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des données'
   } finally {

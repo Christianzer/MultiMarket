@@ -46,7 +46,17 @@ const loadSupermarkets = async () => {
     loading.value = true
     const response = await api.supermarkets.getAll()
     console.log('Supermarkets loaded:', response)
-    supermarkets.value = response as Supermarket[] || []
+    
+    // Vérifier que la réponse contient les données attendues
+    if (response && response.data && Array.isArray(response.data)) {
+      supermarkets.value = response.data as Supermarket[]
+    } else if (response && Array.isArray(response)) {
+      // Si la réponse est directement un tableau
+      supermarkets.value = response as unknown as Supermarket[]
+    } else {
+      supermarkets.value = []
+      console.warn('Format de données inattendu pour les supermarchés')
+    }
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des supermarchés'
   } finally {
