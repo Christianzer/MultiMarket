@@ -1,6 +1,5 @@
 import { app, BrowserWindow, shell, ipcMain } from 'electron'
-import pkg from 'electron-updater'
-const { autoUpdater } = pkg
+import { autoUpdater } from 'electron-updater'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
@@ -119,7 +118,7 @@ function setupAutoUpdater() {
     
     // Configure auto-updater settings
     autoUpdater.logger = console
-    autoUpdater.checkForUpdatesAndNotify = true
+    autoUpdater.autoDownload = false
     
     // Auto-updater event listeners with proper error handling
     autoUpdater.on('checking-for-update', () => {
@@ -171,7 +170,7 @@ function setupAutoUpdater() {
 
     // Check for updates with error handling
     setTimeout(() => {
-      autoUpdater.checkForUpdatesAndNotify().catch(err => {
+      autoUpdater.checkForUpdates().catch(err => {
         console.log('Auto-updater check failed:', err.message)
         win?.webContents.send('updater-error', `Impossible de vérifier les mises à jour: ${err.message}`)
       })
@@ -321,7 +320,7 @@ ipcMain.handle('check-for-updates', async () => {
   try {
     if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
       console.log('Manual update check requested')
-      const result = await autoUpdater.checkForUpdatesAndNotify()
+      const result = await autoUpdater.checkForUpdates()
       return { success: true, result }
     } else {
       return { success: false, error: 'Auto-updater is disabled in development mode' }

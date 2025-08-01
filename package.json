@@ -1,6 +1,6 @@
 {
   "name": "multimarket",
-  "version": "3.2.5",
+  "version": "3.2.6",
   "private": true,
   "type": "module",
   "description": "Application de gestion multi-supermarchés : gestion des stocks, ventes, utilisateurs, fournisseurs et bien plus. Conçue pour centraliser et optimiser l'activité de plusieurs points de vente.",
