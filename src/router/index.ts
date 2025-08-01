@@ -124,6 +124,15 @@ const router = createRouter({
             requiresAuth: true,
           } as RouteMeta & IRouteMeta
         },
+        {
+          path: 'profile',
+          name: 'profile',
+          component: () => import('@/views/dashboard/profile/Index.vue'),
+          meta: {
+            title: 'Mon Profil',
+            requiresAuth: true,
+          } as RouteMeta & IRouteMeta
+        },
         // Routes anciennes (à garder pour compatibilité)
         {
           path: 'home',
