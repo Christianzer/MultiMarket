@@ -61,7 +61,7 @@ const onSubmit = form.handleSubmit(async (values) => {
   <main class="h-screen w-screen flex items-center justify-center bg-gradient-to-br from-background to-muted">
     <Card class="max-w-[320px] md:max-w-[400px] w-full shadow-lg">
       <CardHeader class="text-center pb-6">
-        <CardTitle class="text-2xl font-bold">{{ appStore.supermarketName }}</CardTitle>
+        <CardTitle class="text-2xl font-bold">MultiMarket</CardTitle>
         <p class="text-muted-foreground text-sm">Connectez-vous à votre compte</p>
       </CardHeader>
       

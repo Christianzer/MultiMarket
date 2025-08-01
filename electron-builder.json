@@ -53,7 +53,7 @@
     "requestedExecutionLevel": "asInvoker",
     "signAndEditExecutable": false,
     "legalTrademarks": "MultiMarket",
-    "compression": "7z",
+    "compression": "maximum",
     "artifactName": "${productName}-Setup-${version}.${ext}"
   },
   "nsis": {
