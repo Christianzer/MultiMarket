@@ -60,7 +60,7 @@ function createWindow() {
     win?.webContents.send('main-process-message', new Date().toLocaleString())
     // Afficher la fenêtre seulement quand le contenu est chargé (évite le flash)
     win?.show()
-    
+
     // Focus sur la fenêtre
     if (win && !win.isDestroyed()) {
       win.focus()
@@ -74,7 +74,10 @@ function createWindow() {
 
   // Optimisation de la mémoire - limiter le cache
   win.webContents.session.setSpellCheckerEnabled(false)
-  win.webContents.session.setPreloads([])
+
+  // FIXED: Remove deprecated setPreloads call
+  // The empty array was not doing anything useful anyway
+  // If you need to clear preloads, you can remove specific ones or use clearPreloads() if available
 
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL)
@@ -116,11 +119,11 @@ function setupAutoUpdater() {
   // Only enable auto-updater in production builds
   if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
     console.log('Setting up auto-updater for production...')
-    
+
     // Configure auto-updater settings
     autoUpdater.logger = console
     autoUpdater.autoDownload = false
-    
+
     // Auto-updater event listeners with proper error handling
     autoUpdater.on('checking-for-update', () => {
       console.log('Checking for update...')
@@ -149,7 +152,7 @@ function setupAutoUpdater() {
       log_message += ` - Téléchargé ${Math.round(progressObj.percent)}%`
       log_message += ` (${Math.round(progressObj.transferred / 1024 / 1024)} MB / ${Math.round(progressObj.total / 1024 / 1024)} MB)`
       console.log(log_message)
-      
+
       // Notify renderer process of download progress
       win?.webContents.send('updater-progress', {
         percent: Math.round(progressObj.percent),
@@ -162,7 +165,7 @@ function setupAutoUpdater() {
     autoUpdater.on('update-downloaded', (info) => {
       console.log('Update downloaded:', info)
       win?.webContents.send('updater-message', 'Mise à jour téléchargée. L\'application va redémarrer automatiquement dans quelques secondes...')
-      
+
       // Give user a few seconds to see the message before restarting
       setTimeout(() => {
         autoUpdater.quitAndInstall()
@@ -176,7 +179,7 @@ function setupAutoUpdater() {
         win?.webContents.send('updater-error', `Impossible de vérifier les mises à jour: ${err.message}`)
       })
     }, 5000) // Wait 5 seconds after app start
-    
+
   } else {
     console.log('Auto-updater disabled in development mode')
   }
@@ -187,7 +190,7 @@ function setupAutoUpdater() {
 // Some APIs can only be used after this event occurs.
 app.whenReady().then(() => {
   createWindow()
-  
+
   // Setup auto-updater with proper error handling
   setupAutoUpdater()
 })
@@ -257,26 +260,26 @@ ipcMain.handle('print-receipt', async (event, htmlContent: string) => {
     // Lancer l'impression avec le dialogue Windows
     console.log('Ouverture du dialogue d\'impression Windows...')
     const result = await printWindow.webContents.print(printOptions)
-    
+
     // Log pour déboguer
     console.log('Impression:', result ? 'Réussie' : 'Annulée par l\'utilisateur')
-    
+
     // Fermer la fenêtre d'impression après un délai
     setTimeout(() => {
       if (!printWindow.isDestroyed()) {
         printWindow.close()
       }
     }, 1000)
-    
-    return { 
-      success: true, 
+
+    return {
+      success: true,
       printed: result,
       message: result ? 'Document imprimé avec succès' : 'Impression annulée par l\'utilisateur'
     }
   } catch (error) {
     console.error('Erreur lors de l\'impression:', error)
-    return { 
-      success: false, 
+    return {
+      success: false,
       error: (error as Error).message,
       message: 'Erreur d\'impression - Vérifiez que votre imprimante est connectée'
     }
