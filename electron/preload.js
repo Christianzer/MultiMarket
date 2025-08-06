@@ -1,5 +1,5 @@
-import { contextBridge as u, ipcRenderer as i } from "electron";
-const c = {
+import { contextBridge, ipcRenderer } from "electron";
+const ALLOWED_CHANNELS = {
   // IPC Channels
   invoke: [
     "print-receipt",
@@ -20,64 +20,91 @@ const c = {
   ],
   send: []
 };
-function s(o, e) {
-  return c[e].includes(o);
+function validateChannel(channel, type) {
+  return ALLOWED_CHANNELS[type].includes(channel);
 }
-class f {
+class SecureElectronAPI {
   constructor() {
-    this.rateLimiter = /* @__PURE__ */ new Map(), this.RATE_LIMIT = 10, this.RATE_WINDOW = 1e3;
+    this.rateLimiter = /* @__PURE__ */ new Map();
+    this.RATE_LIMIT = 10;
+    this.RATE_WINDOW = 1e3;
   }
   // 1 seconde
-  checkRateLimit(e) {
-    const r = Date.now(), t = this.rateLimiter.get(e);
-    return !t || r > t.resetTime ? (this.rateLimiter.set(e, { count: 1, resetTime: r + this.RATE_WINDOW }), !0) : t.count >= this.RATE_LIMIT ? (console.warn(`Rate limit exceeded for channel: ${e}`), !1) : (t.count++, !0);
+  checkRateLimit(channel) {
+    const now = Date.now();
+    const limit = this.rateLimiter.get(channel);
+    if (!limit || now > limit.resetTime) {
+      this.rateLimiter.set(channel, { count: 1, resetTime: now + this.RATE_WINDOW });
+      return true;
+    }
+    if (limit.count >= this.RATE_LIMIT) {
+      console.warn(`Rate limit exceeded for channel: ${channel}`);
+      return false;
+    }
+    limit.count++;
+    return true;
   }
   // IPC Communication sécurisé
-  on(e, r) {
-    if (!s(e, "on")) {
-      console.error(`Unauthorized channel: ${e}`);
+  on(channel, listener) {
+    if (!validateChannel(channel, "on")) {
+      console.error(`Unauthorized channel: ${channel}`);
       return;
     }
-    return i.on(e, (t, ...n) => r(t, ...n));
+    return ipcRenderer.on(channel, (event, ...args) => listener(event, ...args));
   }
-  off(e, ...r) {
-    if (!s(e, "on")) {
-      console.error(`Unauthorized channel: ${e}`);
+  off(channel, ...args) {
+    if (!validateChannel(channel, "on")) {
+      console.error(`Unauthorized channel: ${channel}`);
       return;
     }
-    return i.off(e, ...r);
+    return ipcRenderer.off(channel, ...args);
   }
-  send(e, ...r) {
-    if (!s(e, "send")) {
-      console.error(`Unauthorized channel: ${e}`);
+  send(channel, ...args) {
+    if (!validateChannel(channel, "send")) {
+      console.error(`Unauthorized channel: ${channel}`);
       return;
     }
-    if (this.checkRateLimit(e))
-      return i.send(e, ...r);
+    if (!this.checkRateLimit(channel))
+      return;
+    return ipcRenderer.send(channel, ...args);
   }
-  async invoke(e, ...r) {
-    if (!s(e, "invoke"))
-      throw console.error(`Unauthorized channel: ${e}`), new Error(`Unauthorized channel: ${e}`);
-    if (!this.checkRateLimit(e))
-      throw new Error(`Rate limit exceeded for: ${e}`);
-    const t = performance.now();
+  async invoke(channel, ...args) {
+    if (!validateChannel(channel, "invoke")) {
+      console.error(`Unauthorized channel: ${channel}`);
+      throw new Error(`Unauthorized channel: ${channel}`);
+    }
+    if (!this.checkRateLimit(channel)) {
+      throw new Error(`Rate limit exceeded for: ${channel}`);
+    }
+    const startTime = performance.now();
     try {
-      const n = await i.invoke(e, ...r), d = performance.now() - t;
-      return d > 1e3 && console.warn(`Slow IPC operation: ${e} took ${d.toFixed(2)}ms`), n;
-    } catch (n) {
-      throw console.error(`IPC Error on ${e}:`, n), n;
+      const result = await ipcRenderer.invoke(channel, ...args);
+      const duration = performance.now() - startTime;
+      if (duration > 1e3) {
+        console.warn(`Slow IPC operation: ${channel} took ${duration.toFixed(2)}ms`);
+      }
+      return result;
+    } catch (error) {
+      console.error(`IPC Error on ${channel}:`, error);
+      throw error;
     }
   }
   // API spécifique avec validation des paramètres
-  printReceipt(e) {
-    if (typeof e != "string" || e.length === 0)
+  printReceipt(htmlContent) {
+    if (typeof htmlContent !== "string" || htmlContent.length === 0) {
       throw new Error("Invalid HTML content for printing");
-    if (e.length > 1024 * 1024)
+    }
+    if (htmlContent.length > 1024 * 1024) {
       throw new Error("HTML content too large for printing");
-    return this.invoke("print-receipt", e);
+    }
+    return this.invoke("print-receipt", htmlContent);
   }
   openDevTools() {
-    return process.env.NODE_ENV !== "development" ? (console.warn("DevTools disabled in production"), Promise.resolve()) : this.invoke("open-dev-tools");
+    if (process.env.NODE_ENV !== "development") {
+      console.warn("DevTools disabled in production");
+      return Promise.resolve();
+    }
+    return this.invoke("open-dev-tools");
   }
   minimize() {
     return this.invoke("window-minimize");
@@ -101,60 +128,78 @@ class f {
     return this.invoke("restart-app");
   }
   // Event listeners avec nettoyage automatique
-  onUpdaterMessage(e) {
-    if (typeof e != "function")
+  onUpdaterMessage(callback) {
+    if (typeof callback !== "function") {
       throw new Error("Callback must be a function");
-    this.on("updater-message", (r, t) => {
-      typeof t == "string" && e(t);
+    }
+    this.on("updater-message", (_, message) => {
+      if (typeof message === "string") {
+        callback(message);
+      }
     });
   }
-  onUpdaterError(e) {
-    if (typeof e != "function")
+  onUpdaterError(callback) {
+    if (typeof callback !== "function") {
       throw new Error("Callback must be a function");
-    this.on("updater-error", (r, t) => {
-      typeof t == "string" && e(t);
+    }
+    this.on("updater-error", (_, error) => {
+      if (typeof error === "string") {
+        callback(error);
+      }
     });
   }
-  onUpdaterProgress(e) {
-    if (typeof e != "function")
+  onUpdaterProgress(callback) {
+    if (typeof callback !== "function") {
       throw new Error("Callback must be a function");
-    this.on("updater-progress", (r, t) => {
-      t && typeof t == "object" && e(t);
+    }
+    this.on("updater-progress", (_, progress) => {
+      if (progress && typeof progress === "object") {
+        callback(progress);
+      }
     });
   }
   // Méthodes utilitaires
   getSecurityInfo() {
     return {
-      allowedChannels: c,
+      allowedChannels: ALLOWED_CHANNELS,
       rateLimits: Object.fromEntries(this.rateLimiter),
-      nodeIntegration: !1,
-      contextIsolation: !0,
-      sandbox: !1
+      nodeIntegration: false,
+      contextIsolation: true,
+      sandbox: false
       // À modifier selon votre configuration
     };
   }
 }
-const m = new f();
-u.exposeInMainWorld("electronAPI", m);
-function l(o = ["complete", "interactive"]) {
-  return new Promise((e) => {
-    o.includes(document.readyState) ? e(!0) : document.addEventListener("readystatechange", () => {
-      o.includes(document.readyState) && e(!0);
-    });
+const secureAPI = new SecureElectronAPI();
+contextBridge.exposeInMainWorld("electronAPI", secureAPI);
+function domReady(condition = ["complete", "interactive"]) {
+  return new Promise((resolve) => {
+    if (condition.includes(document.readyState)) {
+      resolve(true);
+    } else {
+      document.addEventListener("readystatechange", () => {
+        if (condition.includes(document.readyState)) {
+          resolve(true);
+        }
+      });
+    }
   });
 }
-const a = {
-  append(o, e) {
-    if (!Array.from(o.children).find((r) => r === e))
-      return o.appendChild(e);
+const safeDOM = {
+  append(parent, child) {
+    if (!Array.from(parent.children).find((c) => c === child)) {
+      return parent.appendChild(child);
+    }
   },
-  remove(o, e) {
-    if (Array.from(o.children).find((r) => r === e))
-      return o.removeChild(e);
+  remove(parent, child) {
+    if (Array.from(parent.children).find((c) => c === child)) {
+      return parent.removeChild(child);
+    }
   }
 };
-function h() {
-  const o = "loaders-css__square-spin", e = `
+function useLoading() {
+  const className = `loaders-css__square-spin`;
+  const styleContent = `
 @keyframes square-spin {
   25% { 
     transform: perspective(100px) rotateX(180deg) rotateY(0); 
@@ -169,7 +214,7 @@ function h() {
     transform: perspective(100px) rotateX(0) rotateY(0); 
   }
 }
-.${o} > div {
+.${className} > div {
   animation-fill-mode: both;
   width: 50px;
   height: 50px;
@@ -188,19 +233,28 @@ function h() {
   background: #282c34;
   z-index: 9;
 }
-    `, r = document.createElement("style"), t = document.createElement("div");
-  return r.id = "app-loading-style", r.innerHTML = e, t.className = "app-loading-wrap", t.innerHTML = `<div class="${o}"><div></div></div>`, {
+    `;
+  const oStyle = document.createElement("style");
+  const oDiv = document.createElement("div");
+  oStyle.id = "app-loading-style";
+  oStyle.innerHTML = styleContent;
+  oDiv.className = "app-loading-wrap";
+  oDiv.innerHTML = `<div class="${className}"><div></div></div>`;
+  return {
     appendLoading() {
-      a.append(document.head, r), a.append(document.body, t);
+      safeDOM.append(document.head, oStyle);
+      safeDOM.append(document.body, oDiv);
     },
     removeLoading() {
-      a.remove(document.head, r), a.remove(document.body, t);
+      safeDOM.remove(document.head, oStyle);
+      safeDOM.remove(document.body, oDiv);
     }
   };
 }
-const { appendLoading: w, removeLoading: p } = h();
-l().then(w);
-window.onmessage = (o) => {
-  o.data.payload === "removeLoading" && p();
+const { appendLoading, removeLoading } = useLoading();
+domReady().then(appendLoading);
+window.onmessage = (ev) => {
+  ev.data.payload === "removeLoading" && removeLoading();
 };
-setTimeout(p, 4999);
+setTimeout(removeLoading, 4999);
+//# sourceMappingURL=preload.js.map

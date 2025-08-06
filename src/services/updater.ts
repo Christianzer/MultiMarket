@@ -37,21 +37,27 @@ export class UpdaterService {
   private setupElectronListeners() {
     if (typeof window !== 'undefined' && window.electronAPI) {
       // Écouter les messages de l'auto-updater
-      window.electronAPI.onUpdaterMessage((message: string) => {
-        this.notifyCallbacks(message, 'info')
-      })
+      if (typeof window.electronAPI.onUpdaterMessage === 'function') {
+        window.electronAPI.onUpdaterMessage((message: string) => {
+          this.notifyCallbacks(message, 'info')
+        })
+      }
 
       // Écouter les erreurs de l'auto-updater
-      window.electronAPI.onUpdaterError((error: string) => {
-        this.notifyCallbacks(error, 'error')
-      })
+      if (typeof window.electronAPI.onUpdaterError === 'function') {
+        window.electronAPI.onUpdaterError((error: string) => {
+          this.notifyCallbacks(error, 'error')
+        })
+      }
 
       // Écouter le progrès de téléchargement
-      window.electronAPI.onUpdaterProgress((progress: UpdateProgress) => {
-        this.notifyProgressCallbacks(progress)
-        const progressMessage = `Téléchargement en cours: ${progress.percent}% (${progress.transferred}MB / ${progress.total}MB)`
-        this.notifyCallbacks(progressMessage, 'progress')
-      })
+      if (typeof window.electronAPI.onUpdaterProgress === 'function') {
+        window.electronAPI.onUpdaterProgress((progress: UpdateProgress) => {
+          this.notifyProgressCallbacks(progress)
+          const progressMessage = `Téléchargement en cours: ${progress.percent}% (${progress.transferred}MB / ${progress.total}MB)`
+          this.notifyCallbacks(progressMessage, 'progress')
+        })
+      }
     }
   }
 
