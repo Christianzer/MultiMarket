@@ -199,7 +199,7 @@ class ElectronService {
   private listeners: Map<string, Function[]> = new Map()
 
   onUpdaterMessage(callback: (message: string) => void): () => void {
-    if (!this.available) return () => {}
+    if (!this.available || !this.api!.onUpdaterMessage) return () => {}
     
     this.api!.onUpdaterMessage(callback)
     this.addListener('updater-message', callback)
@@ -208,7 +208,7 @@ class ElectronService {
   }
 
   onUpdaterError(callback: (error: string) => void): () => void {
-    if (!this.available) return () => {}
+    if (!this.available || !this.api!.onUpdaterError) return () => {}
     
     this.api!.onUpdaterError(callback)
     this.addListener('updater-error', callback)
@@ -217,7 +217,7 @@ class ElectronService {
   }
 
   onUpdaterProgress(callback: (progress: any) => void): () => void {
-    if (!this.available) return () => {}
+    if (!this.available || !this.api!.onUpdaterProgress) return () => {}
     
     this.api!.onUpdaterProgress(callback)
     this.addListener('updater-progress', callback)

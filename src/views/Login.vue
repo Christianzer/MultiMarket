@@ -23,6 +23,9 @@ const formSchema = toTypedSchema(z.object({
   password: z.string().min(1, 'Mot de passe requis'),
 }));
 
+const passwordVisible = ref(false)
+
+
 const form = useForm({
   validationSchema: formSchema,
   initialValues: {
@@ -88,21 +91,28 @@ const onSubmit = form.handleSubmit(async (values) => {
             </FormItem>
           </FormField>
 
-          <!-- Champ password -->
           <FormField v-slot="{ componentField }" name="password">
             <FormItem>
               <FormLabel>Mot de passe</FormLabel>
               <FormControl>
-                <Input 
-                  type="password" 
-                  v-bind="componentField"
-                  :disabled="loading"
-                />
+                <div style="position: relative;">
+                  <Input
+                    :type="passwordVisible ? 'text' : 'password'"
+                    v-bind="componentField"
+                    :disabled="loading"
+                  />
+                  <button
+                    type="button"
+                    @click="passwordVisible = !passwordVisible"
+                    style="position: absolute; top: 50%; right: 10px; transform: translateY(-50%); background: none; border: none; cursor: pointer;"
+                  >
+                    {{ passwordVisible ? '🙈' : '👁️' }}
+                  </button>
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
           </FormField>
-
           <!-- Bouton de connexion -->
           <Button 
             type="submit" 
