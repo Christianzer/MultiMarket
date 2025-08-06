@@ -113,7 +113,7 @@ class ElectronService {
 
   // API Methods avec gestion d'erreur
   async printReceipt(htmlContent: string): Promise<any> {
-    if (!this.available) {
+    if (!this.available || !this.api!.printReceipt) {
       throw new Error('Electron API non disponible')
     }
     
@@ -132,19 +132,19 @@ class ElectronService {
 
   // Window Controls avec debounce
   minimize = this.debounce('minimize', async () => {
-    if (this.available) {
+    if (this.available && this.api!.minimize) {
       await this.api!.minimize()
     }
   }, 100)
 
   maximize = this.debounce('maximize', async () => {
-    if (this.available) {
+    if (this.available && this.api!.maximize) {
       await this.api!.maximize()
     }
   }, 100)
 
   close = this.debounce('close', async () => {
-    if (this.available) {
+    if (this.available && this.api!.close) {
       await this.api!.close()
     }
   }, 100)
@@ -155,7 +155,7 @@ class ElectronService {
   private readonly UPDATE_CHECK_INTERVAL = 5 * 60 * 1000 // 5 minutes
 
   async checkForUpdates(force = false): Promise<any> {
-    if (!this.available) return null
+    if (!this.available || !this.api!.checkForUpdates) return null
     
     const now = Date.now()
     if (!force && this.updateInfo && (now - this.lastUpdateCheck) < this.UPDATE_CHECK_INTERVAL) {
@@ -173,7 +173,7 @@ class ElectronService {
   }
 
   async getAppVersion(): Promise<string | null> {
-    if (!this.available) return null
+    if (!this.available || !this.api!.getAppVersion) return null
     
     try {
       return await this.api!.getAppVersion()
@@ -184,13 +184,13 @@ class ElectronService {
   }
 
   async quitAndInstall(): Promise<void> {
-    if (this.available) {
+    if (this.available && this.api!.quitAndInstall) {
       await this.api!.quitAndInstall()
     }
   }
 
   async restartApp(): Promise<void> {
-    if (this.available) {
+    if (this.available && this.api!.restartApp) {
       await this.api!.restartApp()
     }
   }
@@ -256,7 +256,7 @@ class ElectronService {
 
   // Utilitaires de développement
   openDevTools() {
-    if (this.available && process.env.NODE_ENV === 'development') {
+    if (this.available && this.api!.openDevTools && process.env.NODE_ENV === 'development') {
       this.api!.openDevTools()
     }
   }
