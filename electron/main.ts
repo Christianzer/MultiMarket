@@ -116,99 +116,96 @@ function createWindow() {
 
 // Configure auto-updater with proper error handling
 function setupAutoUpdater() {
-  // Only enable auto-updater in production builds
-  if (process.env.NODE_ENV === 'production' && !process.env.VITE_DEV_SERVER_URL) {
-    console.log('Setting up auto-updater for production...')
 
-    // Configure auto-updater settings
-    autoUpdater.logger = console
-    autoUpdater.autoDownload = true // Activé pour téléchargement automatique
-    autoUpdater.allowDowngrade = false
-    autoUpdater.allowPrerelease = false
+  console.log('Setting up auto-updater for production...')
 
-    // Auto-updater event listeners with proper error handling
-    autoUpdater.on('checking-for-update', () => {
-      console.log('Checking for update...')
-      // Notify renderer process
-      win?.webContents.send('updater-message', 'Vérification des mises à jour...')
+  // Configure auto-updater settings
+  autoUpdater.logger = console
+  autoUpdater.autoDownload = true // Activé pour téléchargement automatique
+  autoUpdater.allowDowngrade = false
+  autoUpdater.allowPrerelease = false
+
+  // Auto-updater event listeners with proper error handling
+  autoUpdater.on('checking-for-update', () => {
+    console.log('Checking for update...')
+    // Notify renderer process
+    win?.webContents.send('updater-message', 'Vérification des mises à jour...')
+  })
+
+  autoUpdater.on('update-available', (info) => {
+    console.log('Update available:', info)
+    win?.webContents.send('updater-message', 'Une mise à jour est disponible, téléchargement en cours...')
+    // Téléchargement automatique déjà activé
+  })
+
+  autoUpdater.on('update-not-available', (info) => {
+    console.log('Update not available:', info)
+    win?.webContents.send('updater-message', 'Aucune mise à jour disponible')
+  })
+
+  autoUpdater.on('error', (err) => {
+    console.log('Error in auto-updater:', err)
+    // Don't crash the app on updater errors, just log them
+    win?.webContents.send('updater-error', `Erreur de mise à jour: ${err.message}`)
+  })
+
+  autoUpdater.on('download-progress', (progressObj) => {
+    let log_message = `Vitesse: ${Math.round(progressObj.bytesPerSecond / 1024)} KB/s`
+    log_message += ` - Téléchargé ${Math.round(progressObj.percent)}%`
+    log_message += ` (${Math.round(progressObj.transferred / 1024 / 1024)} MB / ${Math.round(progressObj.total / 1024 / 1024)} MB)`
+    console.log(log_message)
+
+    // Notify renderer process of download progress
+    win?.webContents.send('updater-progress', {
+      percent: Math.round(progressObj.percent),
+      transferred: Math.round(progressObj.transferred / 1024 / 1024),
+      total: Math.round(progressObj.total / 1024 / 1024),
+      speed: Math.round(progressObj.bytesPerSecond / 1024)
     })
+  })
 
-    autoUpdater.on('update-available', (info) => {
-      console.log('Update available:', info)
-      win?.webContents.send('updater-message', 'Une mise à jour est disponible, téléchargement en cours...')
-      // Téléchargement automatique déjà activé
-    })
+  autoUpdater.on('update-downloaded', (info) => {
+    console.log('Update downloaded:', info)
+    win?.webContents.send('updater-message', 'Mise à jour téléchargée. L\'application va redémarrer automatiquement dans quelques secondes...')
 
-    autoUpdater.on('update-not-available', (info) => {
-      console.log('Update not available:', info)
-      win?.webContents.send('updater-message', 'Aucune mise à jour disponible')
-    })
+    // Give user a few seconds to see the message before restarting
+    setTimeout(() => {
+      autoUpdater.quitAndInstall()
+    }, 5000)
+  })
 
-    autoUpdater.on('error', (err) => {
-      console.log('Error in auto-updater:', err)
-      // Don't crash the app on updater errors, just log them
-      win?.webContents.send('updater-error', `Erreur de mise à jour: ${err.message}`)
-    })
-
-    autoUpdater.on('download-progress', (progressObj) => {
-      let log_message = `Vitesse: ${Math.round(progressObj.bytesPerSecond / 1024)} KB/s`
-      log_message += ` - Téléchargé ${Math.round(progressObj.percent)}%`
-      log_message += ` (${Math.round(progressObj.transferred / 1024 / 1024)} MB / ${Math.round(progressObj.total / 1024 / 1024)} MB)`
-      console.log(log_message)
-
-      // Notify renderer process of download progress
-      win?.webContents.send('updater-progress', {
-        percent: Math.round(progressObj.percent),
-        transferred: Math.round(progressObj.transferred / 1024 / 1024),
-        total: Math.round(progressObj.total / 1024 / 1024),
-        speed: Math.round(progressObj.bytesPerSecond / 1024)
-      })
-    })
-
-    autoUpdater.on('update-downloaded', (info) => {
-      console.log('Update downloaded:', info)
-      win?.webContents.send('updater-message', 'Mise à jour téléchargée. L\'application va redémarrer automatiquement dans quelques secondes...')
-
-      // Give user a few seconds to see the message before restarting
-      setTimeout(() => {
-        autoUpdater.quitAndInstall()
-      }, 5000)
-    })
-
-    // Check for updates with error handling and retry logic
-    const checkForUpdatesWithRetry = async (retryCount = 3) => {
-      for (let i = 0; i < retryCount; i++) {
-        try {
-          console.log(`Tentative ${i + 1}/${retryCount} de vérification des mises à jour`)
-          await autoUpdater.checkForUpdates()
-          break // Succès, sortir de la boucle
-        } catch (err: any) {
-          console.log(`Échec tentative ${i + 1}:`, err.message)
-          if (i === retryCount - 1) {
-            // Dernière tentative échouée
-            win?.webContents.send('updater-error', `Impossible de vérifier les mises à jour: ${err.message}`)
-          } else {
-            // Attendre avant la prochaine tentative (délai progressif)
-            await new Promise(resolve => setTimeout(resolve, (i + 1) * 2000))
-          }
+  // Check for updates with error handling and retry logic
+  const checkForUpdatesWithRetry = async (retryCount = 3) => {
+    for (let i = 0; i < retryCount; i++) {
+      try {
+        console.log(`Tentative ${i + 1}/${retryCount} de vérification des mises à jour`)
+        await autoUpdater.checkForUpdates()
+        break // Succès, sortir de la boucle
+      } catch (err: any) {
+        console.log(`Échec tentative ${i + 1}:`, err.message)
+        if (i === retryCount - 1) {
+          // Dernière tentative échouée
+          win?.webContents.send('updater-error', `Impossible de vérifier les mises à jour: ${err.message}`)
+        } else {
+          // Attendre avant la prochaine tentative (délai progressif)
+          await new Promise(resolve => setTimeout(resolve, (i + 1) * 2000))
         }
       }
     }
-
-    setTimeout(() => {
-      checkForUpdatesWithRetry()
-    }, 5000) // Wait 5 seconds after app start
-
-    // Vérification périodique des mises à jour (toutes les heures)
-    setInterval(() => {
-      if (win && !win.isDestroyed()) {
-        checkForUpdatesWithRetry(1) // Une seule tentative pour les vérifications périodiques
-      }
-    }, 60 * 60 * 1000) // 1 heure
-
-  } else {
-    console.log('Auto-updater disabled in development mode')
   }
+
+  setTimeout(() => {
+    checkForUpdatesWithRetry()
+  }, 5000) // Wait 5 seconds after app start
+
+  // Vérification périodique des mises à jour (toutes les heures)
+  setInterval(() => {
+    if (win && !win.isDestroyed()) {
+      checkForUpdatesWithRetry(1) // Une seule tentative pour les vérifications périodiques
+    }
+  }, 60 * 60 * 1000) // 1 heure
+
+
 }
 
 // This method will be called when Electron has finished
