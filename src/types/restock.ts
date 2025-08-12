@@ -14,6 +14,7 @@ export interface Restock {
     id: number
     code: string
     name: string
+    image:string
   }
   quantity: number
   note: string

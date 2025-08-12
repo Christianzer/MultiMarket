@@ -15,6 +15,7 @@ import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import type { Product } from '@/types/product'
 import type { RestockFormItem, BulkRestockRequest, Restock } from '@/types/restock'
+import { buildLogoUrl } from '@/config/api'
 
 const authStore = useAuthStore()
 
@@ -327,7 +328,10 @@ onMounted(async () => {
                 <TableRow v-for="restock in filteredRestockHistory" :key="restock.id" class="hover:bg-muted/50">
                   <TableCell>
                     <div class="flex items-center space-x-3">
-                      <div class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                      <div v-if="restock.product.image" class="h-8 w-8 rounded overflow-hidden">
+                        <img :src="buildLogoUrl(restock.product.image) || '/favicon.ico'"  :alt="restock.product.name" class="h-full w-full object-cover" />
+                      </div>
+                      <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
                         <Package class="h-4 w-4 text-primary" />
                       </div>
                       <div>

@@ -7,11 +7,12 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Minus, Trash2, ShoppingCart, Search, Printer, Check, X } from 'lucide-vue-next'
+import { Plus, Minus, Trash2, ShoppingCart, Search, Printer, Check, X, Package } from 'lucide-vue-next'
 import { api } from '@/services/api'
 import type { CartItem, Sale, ProductSearchResult } from '@/types/sale'
 import '@/types/electron'
 import { useAuthStore } from '@/stores/auth'
+import { buildLogoUrl } from '@/config/api'
 
 const authStore = useAuthStore()
 
@@ -87,6 +88,7 @@ const addToCart = (product: ProductSearchResult) => {
       productId: product.id,
       productCode: product.code,
       productName: product.name,
+      productImage: product.image,
       price: product.price,
       quantity: 1
     })
@@ -565,7 +567,15 @@ onMounted(async () => {
                 <TableBody>
                   <TableRow v-for="product in filteredProducts" :key="product.id" class="hover:bg-muted/50">
                     <TableCell>
-                      <Badge variant="outline">{{ product.code }}</Badge>
+                      <div class="flex items-center space-x-3">
+                        <div v-if="product.image" class="h-8 w-8 rounded overflow-hidden">
+                          <img :src="buildLogoUrl(product.image) || '/favicon.ico'"  :alt="product.name" class="h-full w-full object-cover" />
+                        </div>
+                        <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                          <Package class="h-4 w-4 text-primary" />
+                        </div>
+                        <div class="font-medium">{{ product.code }}</div>
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div class="font-medium">{{ product.name }}</div>
@@ -628,6 +638,12 @@ onMounted(async () => {
                 <TableRow v-for="item in cart" :key="item.productId">
                   <TableCell>
                     <div>
+                      <div v-if="item.productImage" class="h-8 w-8 rounded overflow-hidden">
+                        <img :src="buildLogoUrl(item.productImage) || '/favicon.ico'"  :alt="item.productName" class="h-full w-full object-cover" />
+                      </div>
+                      <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                        <Package class="h-4 w-4 text-primary" />
+                      </div>
                       <div class="font-medium">{{ item.productName }}</div>
                       <div class="text-sm text-muted-foreground">{{ item.productCode }}</div>
                     </div>

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Edit, Trash2, Eye, Package } from 'lucide-vue-next'
 import type { Product } from '@/types/product'
 import { useAuthStore } from '@/stores/auth'
-
+import { buildLogoUrl } from '@/config/api'
 interface Props {
   products: Product[]
   loading?: boolean
@@ -15,7 +15,7 @@ interface Props {
 
 interface Emits {
   edit: [product: Product]
-  delete: [product: Product] 
+  delete: [product: Product]
   details: [product: Product]
 }
 
@@ -41,9 +41,9 @@ const virtualizer = useVirtualizer(
 )
 
 const formatPrice = (price: string) => {
-  return `${parseFloat(price).toLocaleString('fr-FR', { 
+  return `${parseFloat(price).toLocaleString('fr-FR', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0 
+    maximumFractionDigits: 0
   })} FCFA`
 }
 
@@ -53,7 +53,7 @@ const getProductInitial = (name: string) => {
 </script>
 
 <template>
-  <div 
+  <div
     ref="parentRef"
     class="h-[600px] overflow-auto"
     style="contain: strict;"
@@ -83,11 +83,18 @@ const getProductInitial = (name: string) => {
             <CardHeader class="pb-3">
               <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
-                  <div 
-                    class="w-10 h-10 rounded-lg flex items-center justify-center text-white font-medium"
-                    :style="{ backgroundColor: authStore.primaryColor }"
+                  <div
+                    class="w-10 h-10 rounded-lg flex items-center justify-center"
                   >
-                    {{ getProductInitial(products[item.index].name) }}
+                    <img
+                      v-if="products[item.index].image"
+                      class="w-full h-full object-cover"
+                      :src="buildLogoUrl(products[item.index].image)"
+                      :alt="products[item.index].name"
+                    />
+                    <span v-else>
+    {{ getProductInitial(products[item.index].name) }}
+  </span>
                   </div>
                   <div>
                     <CardTitle class="text-sm">{{ products[item.index].name }}</CardTitle>
@@ -111,29 +118,29 @@ const getProductInitial = (name: string) => {
                   {{ products[item.index].supermarket.name }}
                 </Badge>
               </div>
-              
+
               <div class="flex space-x-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   @click="emit('details', products[item.index])"
                   class="flex-1"
                 >
                   <Eye class="w-3 h-3 mr-1" />
                   Détails
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
+                <Button
+                  size="sm"
+                  variant="outline"
                   @click="emit('edit', products[item.index])"
                   class="flex-1"
                 >
                   <Edit class="w-3 h-3 mr-1" />
                   Modifier
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="destructive" 
+                <Button
+                  size="sm"
+                  variant="destructive"
                   @click="emit('delete', products[item.index])"
                   class="flex-1"
                 >

@@ -29,13 +29,21 @@ export const buildApiUrl = (endpoint: string): string => {
 export const buildLogoUrl = (logoPath: string | null | undefined): string | null => {
   if (!logoPath) return null
 
-  if (logoPath.startsWith('http://') || logoPath.startsWith('https://')) {
-    return logoPath
+  logoPath = logoPath.trim()
+
+  if (/^https?:\/\//i.test(logoPath)) {
+    // On force l'ajout de /public si le chemin contient /uploads
+    return logoPath.replace('/uploads', '/public/uploads')
   }
 
   const baseUrl = API_CONFIG.baseURL.replace(/\/(index\.php)?\/api$/, '')
-  const cleanPath = logoPath.startsWith('/') ? logoPath : `/${logoPath}`
-  return `${baseUrl}${cleanPath}`
+
+  // Ajouter /public avant /uploads si nécessaire
+  const cleanPath = logoPath.startsWith('/')
+    ? logoPath.replace('/uploads', '/public/uploads')
+    : `/${logoPath.replace('/uploads', '/public/uploads')}`
+
+  return `${baseUrl}${encodeURI(cleanPath)}`
 }
 
 

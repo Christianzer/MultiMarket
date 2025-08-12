@@ -16,6 +16,7 @@ export interface CartItem {
   productId: number
   productCode: string
   productName: string
+  productImage :string
   price: string
   quantity: number
 }
@@ -25,6 +26,7 @@ export interface ProductSearchResult {
   code: string
   name: string
   price: string
+  image:string
   createdAt: string
   updatedAt: string
   supermarket: string

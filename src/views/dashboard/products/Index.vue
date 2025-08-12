@@ -13,6 +13,7 @@ import { api } from '@/services/api'
 import type { Product, CreateProductRequest, UpdateProductRequest, CreateProductWithImageRequest, UpdateProductWithImageRequest } from '@/types/product'
 import { validateImageFile, createImagePreview, revokeImagePreview } from '@/utils/formData'
 import { useAuthStore } from '@/stores/auth'
+import { buildLogoUrl } from '@/config/api'
 
 const authStore = useAuthStore()
 
@@ -487,7 +488,7 @@ onMounted(async () => {
                 <TableCell>
                   <div class="flex items-center space-x-3">
                     <div v-if="product.image" class="h-8 w-8 rounded overflow-hidden">
-                      <img :src="product.image" :alt="product.name" class="h-full w-full object-cover" />
+                      <img :src="buildLogoUrl(product.image) || '/favicon.ico'"  :alt="product.name" class="h-full w-full object-cover" />
                     </div>
                     <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
                       <Package class="h-4 w-4 text-primary" />
