@@ -83,6 +83,16 @@ export default defineConfig(({ mode }) => {
     base: './',
     appType: 'spa',
     plugins,
+    server: {
+      proxy: {
+        '/api': {
+          target: 'https://multi.ciatci.com/public/index.php',
+          changeOrigin: true,
+          secure: true,
+          rewrite: (path) => path.replace(/^\/api/, '/api')
+        }
+      }
+    },
     css: {
       postcss: {
         plugins: [

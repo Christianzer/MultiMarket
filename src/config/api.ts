@@ -1,6 +1,6 @@
 // Configuration de l'API
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'https://multi.ciatci.com/public/index.php/api',
+  baseURL: import.meta.env.DEV ? '/api' : (import.meta.env.VITE_API_BASE_URL || 'https://multi.ciatci.com/public/index.php/api'),
   timeout: 10000, // 10 secondes
   headers: {
     'Content-Type': 'application/json',
