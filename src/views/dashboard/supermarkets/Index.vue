@@ -34,6 +34,7 @@ const createForm = ref<CreateSupermarketRequest>({
 const editForm = ref<UpdateSupermarketRequest>({
   name: '',
   address: '',
+  code: '',
   phone: ''
 })
 
@@ -81,6 +82,7 @@ const openEditModal = (supermarket: Supermarket) => {
   editForm.value = {
     name: supermarket.name,
     address: supermarket.address,
+    code: supermarket.code,
     phone: supermarket.phone
   }
   logoFile.value = null
@@ -333,6 +335,11 @@ onMounted(() => {
           <div class="space-y-2">
             <Label for="edit-name">Nom</Label>
             <Input id="edit-name" v-model="editForm.name" />
+          </div>
+
+          <div class="space-y-2">
+            <Label for="create-code">Code</Label>
+            <Input id="create-code" v-model="editForm.code" placeholder="CAS_MAR" />
           </div>
           
           <div class="space-y-2">

@@ -44,9 +44,9 @@ const loadProducts = async () => {
   try {
     productsLoading.value = true
     productsError.value = ''
-    
+
     const response = await api.products.getAll()
-    
+
     // Vérifier que la réponse contient les données attendues
     if (response && response.data && Array.isArray(response.data)) {
       products.value = response.data as ProductSearchResult[]
@@ -69,9 +69,9 @@ const filteredProducts = computed(() => {
   if (!searchTerm.value.trim()) {
     return products.value
   }
-  
+
   const term = searchTerm.value.toLowerCase()
-  return products.value.filter(product => 
+  return products.value.filter(product =>
     product.name.toLowerCase().includes(term) ||
     product.code.toLowerCase().includes(term)
   )
@@ -80,7 +80,7 @@ const filteredProducts = computed(() => {
 // Ajouter un produit au panier
 const addToCart = (product: ProductSearchResult) => {
   const existingItem = cart.value.find(item => item.productId === product.id)
-  
+
   if (existingItem) {
     existingItem.quantity += 1
   } else {
@@ -93,7 +93,7 @@ const addToCart = (product: ProductSearchResult) => {
       quantity: 1
     })
   }
-  
+
   calculateTotal()
 }
 
@@ -175,11 +175,11 @@ const calculateTotal = () => {
 // Valider et envoyer la vente
 const processSale = async () => {
   if (cart.value.length === 0 || !isAmountSufficient.value) return
-  
+
   try {
     saleLoading.value = true
     saleError.value = ''
-    
+
     const saleData: Sale = {
       total: cartTotal.value.toFixed(2),
       clientAmount: parseFloat(clientAmount.value),
@@ -191,22 +191,22 @@ const processSale = async () => {
         quantity: item.quantity
       }))
     }
-    
+
     await api.sales.create(saleData)
-    
+
     // Sauvegarder pour le reçu
     lastSale.value = saleData
-    
+
     // Afficher le succès
     showSuccessModal.value = true
-    
+
     // Vider le panier après succès
     clearCart()
-    
+
     // Réinitialiser le paiement
     clientAmount.value = ''
     showPaymentModal.value = false
-    
+
   } catch (err: any) {
     saleError.value = err.message || 'Erreur lors de la vente'
   } finally {
@@ -217,7 +217,7 @@ const processSale = async () => {
 // Imprimer le reçu avec Electron ou fallback
 const printReceipt = async () => {
   if (!lastSale.value) return
-  
+
   // Vérifier si on est dans Electron
   if (window.electronAPI && window.electronAPI.printReceipt) {
     // Utiliser l'API Electron pour l'impression
@@ -227,7 +227,7 @@ const printReceipt = async () => {
     // Fallback pour le navigateur web
     const receiptContent = generateReceiptHTML(lastSale.value)
     const printWindow = window.open('', '_blank')
-    
+
     if (printWindow) {
       printWindow.document.write(receiptContent)
       printWindow.document.close()
@@ -242,7 +242,7 @@ const generateReceiptHTML = (sale: Sale) => {
   const currentDate = new Date().toLocaleDateString('fr-FR')
   const currentTime = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const totalItems = sale.items.reduce((sum, item) => sum + item.quantity, 0)
-  
+
   return `
     <!DOCTYPE html>
     <html>
@@ -543,18 +543,18 @@ onMounted(async () => {
                 class="text-lg"
               />
             </div>
-            
+
             <!-- Loading state -->
             <div v-if="productsLoading" class="flex items-center justify-center py-8">
               <Loader2 class="h-6 w-6 animate-spin mr-2" />
               <span>Chargement des produits...</span>
             </div>
-            
+
             <!-- Error state -->
             <div v-if="productsError" class="text-sm text-destructive mb-4">
               {{ productsError }}
             </div>
-            
+
             <!-- Tableau des produits dans un container scrollable -->
             <div v-if="!productsLoading && !productsError" class="border rounded-lg" style="max-height: 200px; overflow-y: auto;">
               <Table>
@@ -586,8 +586,8 @@ onMounted(async () => {
                       <span class="font-semibold text-primary">{{ formatPrice(product.price) }}</span>
                     </TableCell>
                     <TableCell class="text-right">
-                      <Button 
-                        size="sm" 
+                      <Button
+                        size="sm"
                         @click="addToCart(product)"
                         class="bg-green-600 hover:bg-green-700"
                       >
@@ -625,7 +625,7 @@ onMounted(async () => {
             <div v-if="cart.length === 0" class="text-center text-muted-foreground py-8">
               Aucun article dans le panier
             </div>
-            
+
             <Table v-else>
               <TableHeader>
                 <TableRow>
@@ -653,18 +653,18 @@ onMounted(async () => {
                   <TableCell>{{ formatPrice(item.price) }}</TableCell>
                   <TableCell>
                     <div class="flex items-center space-x-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         @click="updateQuantity(item.productId, item.quantity - 1)"
                         :disabled="item.quantity <= 1"
                       >
                         <Minus class="h-3 w-3" />
                       </Button>
                       <span class="w-8 text-center">{{ item.quantity }}</span>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         @click="updateQuantity(item.productId, item.quantity + 1)"
                       >
                         <Plus class="h-3 w-3" />
@@ -675,9 +675,9 @@ onMounted(async () => {
                     {{ formatPrice(parseFloat(item.price) * item.quantity) }}
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       class="text-destructive"
                       @click="removeFromCart(item.productId)"
                     >
@@ -719,19 +719,19 @@ onMounted(async () => {
         <!-- Actions -->
         <Card>
           <CardContent class="pt-6 space-y-3">
-            <Button 
-              class="w-full" 
-              size="lg" 
+            <Button
+              class="w-full"
+              size="lg"
               @click="openPaymentModal"
               :disabled="cart.length === 0"
             >
               <Check class="h-4 w-4 mr-2" />
               Finaliser la vente
             </Button>
-            
-            <Button 
-              variant="outline" 
-              class="w-full" 
+
+            <Button
+              variant="outline"
+              class="w-full"
               @click="showReceiptModal = true"
               :disabled="!lastSale"
             >
@@ -759,11 +759,11 @@ onMounted(async () => {
             Reçu de caisse - Transaction réussie
           </DialogDescription>
         </DialogHeader>
-        
+
         <div class="py-4 overflow-y-auto flex-1" v-if="lastSale">
           <!-- Reçu style supermarché -->
           <div class="bg-white border-2 border-dashed border-muted-foreground/30 p-4 rounded-lg font-mono text-sm space-y-3">
-            
+
             <!-- En-tête du supermarché -->
             <div class="text-center border-b border-dashed border-muted-foreground/30 pb-3">
               <div class="font-bold text-base">{{ authStore.supermarket?.name || 'SUPERMARCHÉ' }}</div>
@@ -834,7 +834,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        
+
         <DialogFooter class="gap-2 flex-shrink-0 border-t bg-background">
           <Button variant="outline" @click="printReceipt" v-if="lastSale">
             <Printer class="h-4 w-4 mr-2" />
@@ -856,7 +856,7 @@ onMounted(async () => {
             Imprimer le reçu de la dernière vente
           </DialogDescription>
         </DialogHeader>
-        
+
         <DialogFooter class="gap-2">
           <Button variant="outline" @click="showReceiptModal = false">
             Annuler
@@ -878,7 +878,7 @@ onMounted(async () => {
             Saisir le montant reçu du client
           </DialogDescription>
         </DialogHeader>
-        
+
         <div class="space-y-6 py-4">
           <!-- Récapitulatif de la vente -->
           <div class="bg-muted/50 rounded-lg p-4">
@@ -890,14 +890,14 @@ onMounted(async () => {
               <span>{{ cart.length }} article(s)</span>
             </div>
           </div>
-          
+
           <!-- Saisie du montant client -->
           <div class="space-y-2">
             <Label for="client-amount">Montant reçu du client</Label>
-            <Input 
+            <Input
               id="client-amount"
-              v-model="clientAmount" 
-              type="text" 
+              v-model="clientAmount"
+              type="text"
               inputmode="numeric"
               pattern="[0-9]*"
               placeholder="0"
@@ -908,7 +908,7 @@ onMounted(async () => {
               Le montant est insuffisant
             </div>
           </div>
-          
+
           <!-- Calcul de la monnaie -->
           <div v-if="clientAmount && isAmountSufficient" class="bg-primary/10 rounded-lg p-4">
             <div class="flex justify-between items-center">
@@ -917,13 +917,13 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        
+
         <DialogFooter class="gap-2">
           <Button variant="outline" @click="closePaymentModal" :disabled="saleLoading">
             Annuler
           </Button>
-          <Button 
-            @click="processSale" 
+          <Button
+            @click="processSale"
             :disabled="!isAmountSufficient || saleLoading"
           >
             <Loader2 v-if="saleLoading" class="w-4 h-4 mr-2 animate-spin" />

@@ -22,4 +22,5 @@ export interface UpdateSupermarketRequest {
   name: string
   address: string
   phone: string
+  code: string
 }

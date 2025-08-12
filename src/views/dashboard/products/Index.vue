@@ -409,7 +409,10 @@ onMounted(async () => {
         </CardHeader>
         <CardContent>
           <div class="text-2xl font-bold">
-            {{ filteredProducts.reduce((sum, p) => sum + parseFloat(p.price), 0).toLocaleString('fr-FR', {
+            {{  filteredProducts.reduce(
+            (sum, p) => sum + (parseFloat(p.price) * parseFloat(p.stock)),
+            0
+          ).toLocaleString('fr-FR', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0
             }) }} FCFA
