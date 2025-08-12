@@ -122,7 +122,9 @@ function setupAutoUpdater() {
 
     // Configure auto-updater settings
     autoUpdater.logger = console
-    autoUpdater.autoDownload = false
+    autoUpdater.autoDownload = true // Activé pour téléchargement automatique
+    autoUpdater.allowDowngrade = false
+    autoUpdater.allowPrerelease = false
 
     // Auto-updater event listeners with proper error handling
     autoUpdater.on('checking-for-update', () => {
@@ -133,7 +135,8 @@ function setupAutoUpdater() {
 
     autoUpdater.on('update-available', (info) => {
       console.log('Update available:', info)
-      win?.webContents.send('updater-message', 'Une mise à jour est disponible, veuillez mettre à jour l\'application et redémarrer')
+      win?.webContents.send('updater-message', 'Une mise à jour est disponible, téléchargement en cours...')
+      // Téléchargement automatique déjà activé
     })
 
     autoUpdater.on('update-not-available', (info) => {
@@ -172,13 +175,36 @@ function setupAutoUpdater() {
       }, 5000)
     })
 
-    // Check for updates with error handling
+    // Check for updates with error handling and retry logic
+    const checkForUpdatesWithRetry = async (retryCount = 3) => {
+      for (let i = 0; i < retryCount; i++) {
+        try {
+          console.log(`Tentative ${i + 1}/${retryCount} de vérification des mises à jour`)
+          await autoUpdater.checkForUpdates()
+          break // Succès, sortir de la boucle
+        } catch (err: any) {
+          console.log(`Échec tentative ${i + 1}:`, err.message)
+          if (i === retryCount - 1) {
+            // Dernière tentative échouée
+            win?.webContents.send('updater-error', `Impossible de vérifier les mises à jour: ${err.message}`)
+          } else {
+            // Attendre avant la prochaine tentative (délai progressif)
+            await new Promise(resolve => setTimeout(resolve, (i + 1) * 2000))
+          }
+        }
+      }
+    }
+
     setTimeout(() => {
-      autoUpdater.checkForUpdates().catch(err => {
-        console.log('Auto-updater check failed:', err.message)
-        win?.webContents.send('updater-error', `Impossible de vérifier les mises à jour: ${err.message}`)
-      })
+      checkForUpdatesWithRetry()
     }, 5000) // Wait 5 seconds after app start
+
+    // Vérification périodique des mises à jour (toutes les heures)
+    setInterval(() => {
+      if (win && !win.isDestroyed()) {
+        checkForUpdatesWithRetry(1) // Une seule tentative pour les vérifications périodiques
+      }
+    }, 60 * 60 * 1000) // 1 heure
 
   } else {
     console.log('Auto-updater disabled in development mode')

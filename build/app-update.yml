@@ -1,0 +1,6 @@
+provider: github
+owner: Christianzer
+repo: MultiMarket
+vPrefixedTagName: true
+releaseType: release
+updaterCacheDirName: multimarket-updater

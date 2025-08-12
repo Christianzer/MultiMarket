@@ -16,6 +16,10 @@
     {
       "from": "build/icon.ico",
       "to": "icon.ico"
+    },
+    {
+      "from": "build/app-update.yml",
+      "to": "resources/app-update.yml"
     }
   ],
   "extraMetadata": {
@@ -69,7 +73,9 @@
     "runAfterFinish": true,
     "deleteAppDataOnUninstall": false,
     "differentialPackage": true,
-    "packElevateHelper": false
+    "packElevateHelper": false,
+    "perMachine": false,
+    "allowElevation": true
   },
   "directories": {
     "buildResources": "build",
