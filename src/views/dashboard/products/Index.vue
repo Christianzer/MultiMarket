@@ -66,6 +66,8 @@ const submitting = ref(false)
 const imagePreviewUrl = ref<string | null>(null)
 const editImagePreviewUrl = ref<string | null>(null)
 const imageError = ref<string>('')
+const fileInput = ref<HTMLInputElement | null>(null)
+const editFileInput = ref<HTMLInputElement | null>(null)
 
 const loadProducts = async (force = false) => {
   try {
@@ -180,6 +182,15 @@ const clearEditImagePreview = () => {
   }
   editFormWithImage.value.image = undefined
   imageError.value = ''
+}
+
+// Methods to trigger file inputs
+const triggerFileInput = () => {
+  fileInput.value?.click()
+}
+
+const triggerEditFileInput = () => {
+  editFileInput.value?.click()
 }
 
 const openCreateModal = () => {
@@ -572,17 +583,18 @@ onMounted(async () => {
             <Label>Image du produit (optionnel)</Label>
 
             <!-- Upload area -->
-            <div v-if="!imagePreviewUrl" class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+            <div v-if="!imagePreviewUrl" class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center relative cursor-pointer" @click="triggerFileInput">
               <Upload class="mx-auto h-8 w-8 text-muted-foreground mb-2" />
               <div class="space-y-1">
                 <p class="text-sm font-medium">Cliquez pour sélectionner une image</p>
                 <p class="text-xs text-muted-foreground">JPEG, PNG, WebP - Max 5MB</p>
               </div>
               <input
+                ref="fileInput"
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 @change="handleImageSelect"
-                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                class="hidden"
               />
             </div>
 
@@ -665,17 +677,18 @@ onMounted(async () => {
             <Label>{{ selectedProduct.image ? 'Changer l\'image' : 'Ajouter une image' }} (optionnel)</Label>
 
             <!-- Upload area -->
-            <div v-if="!editImagePreviewUrl" class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+            <div v-if="!editImagePreviewUrl" class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center relative cursor-pointer" @click="triggerEditFileInput">
               <Upload class="mx-auto h-8 w-8 text-muted-foreground mb-2" />
               <div class="space-y-1">
                 <p class="text-sm font-medium">Cliquez pour sélectionner une nouvelle image</p>
                 <p class="text-xs text-muted-foreground">JPEG, PNG, WebP - Max 5MB</p>
               </div>
               <input
+                ref="editFileInput"
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 @change="handleEditImageSelect"
-                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                class="hidden"
               />
             </div>
 
