@@ -149,7 +149,15 @@ export const api = {
     getAll: () => apiService.get('/products'),
     getById: (id: number) => apiService.get(`/products/${id}`),
     create: (product: any) => apiService.post('/products', product),
+    createWithImage: (productData: FormData) => apiService.request('/products', {
+      method: 'POST',
+      body: productData,
+    }),
     update: (id: number, product: any) => apiService.put(`/products/${id}`, product),
+    updateWithImage: (id: number, productData: FormData) => apiService.request(`/products/${id}`, {
+      method: 'PUT',
+      body: productData,
+    }),
     delete: (id: number) => apiService.delete(`/products/${id}`),
   },
 

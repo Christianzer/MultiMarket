@@ -1,274 +1,188 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
-import pkg from "electron-updater";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-const { autoUpdater } = pkg;
-createRequire(import.meta.url);
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-process.env.APP_ROOT = path.join(__dirname, "..");
-const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-const MAIN_DIST = path.join(process.env.APP_ROOT, "electron");
-const RENDERER_DIST = path.join(process.env.APP_ROOT, "dist");
-process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL ? path.join(process.env.APP_ROOT, "public") : RENDERER_DIST;
-let win;
-function createWindow() {
-  win = new BrowserWindow({
+import { app as l, BrowserWindow as c, ipcMain as s, shell as g } from "electron";
+import w from "electron-updater";
+import { createRequire as b } from "node:module";
+import { fileURLToPath as E } from "node:url";
+import r from "node:path";
+const { autoUpdater: t } = w;
+b(import.meta.url);
+const u = r.dirname(E(import.meta.url));
+process.env.APP_ROOT = r.join(u, "..");
+const d = process.env.VITE_DEV_SERVER_URL, V = r.join(process.env.APP_ROOT, "electron"), p = r.join(process.env.APP_ROOT, "dist");
+process.env.VITE_PUBLIC = d ? r.join(process.env.APP_ROOT, "public") : p;
+let e;
+function m() {
+  e = new c({
     width: 1200,
     height: 800,
     minWidth: 800,
     minHeight: 600,
-    icon: path.join(process.env.APP_ROOT, "build", "icon.ico"),
-    autoHideMenuBar: true,
-    show: false,
+    icon: r.join(process.env.APP_ROOT, "build", "icon.ico"),
+    autoHideMenuBar: !0,
+    show: !1,
     // Ne pas afficher immédiatement pour éviter le flash
     backgroundColor: "#ffffff",
     // Couleur de fond par défaut
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
-      nodeIntegration: false,
-      contextIsolation: true,
-      enableRemoteModule: false,
+      preload: r.join(u, "preload.js"),
+      nodeIntegration: !1,
+      contextIsolation: !0,
+      enableRemoteModule: !1,
       // Sécurité
-      allowRunningInsecureContent: false,
+      allowRunningInsecureContent: !1,
       // Sécurité
-      experimentalFeatures: false,
+      experimentalFeatures: !1,
       // Sécurité
-      nodeIntegrationInWorker: false,
+      nodeIntegrationInWorker: !1,
       // Sécurité
-      nodeIntegrationInSubFrames: false,
+      nodeIntegrationInSubFrames: !1,
       // Sécurité
-      safeDialogs: true,
+      safeDialogs: !0,
       // Sécurité
-      sandbox: false,
+      sandbox: !1,
       // Peut être activé pour plus de sécurité si besoin
-      webSecurity: true,
+      webSecurity: !0,
       // Sécurité
-      spellcheck: false,
+      spellcheck: !1,
       // Performance - désactiver si pas nécessaire
-      backgroundThrottling: false
+      backgroundThrottling: !1
       // Performance - garder les animations fluides
     }
-  });
-  win.webContents.on("did-finish-load", () => {
-    win == null ? void 0 : win.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString());
-    win == null ? void 0 : win.show();
-    if (win && !win.isDestroyed()) {
-      win.focus();
-    }
-  });
-  win.webContents.on("did-fail-load", (event, errorCode, errorDescription) => {
-    console.error("Failed to load:", errorCode, errorDescription);
-  });
-  win.webContents.session.setSpellCheckerEnabled(false);
-  if (VITE_DEV_SERVER_URL) {
-    win.loadURL(VITE_DEV_SERVER_URL);
-    if (process.env.NODE_ENV === "development") {
-      win.webContents.openDevTools();
-    }
-  } else {
-    win.loadFile(path.join(RENDERER_DIST, "index.html"));
-  }
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.startsWith("https:"))
-      shell.openExternal(url);
-    return { action: "deny" };
-  });
-  win.on("minimize", () => {
-  });
-  win.on("closed", () => {
-    win = null;
-  });
-  win.webContents.on("dom-ready", () => {
-    win == null ? void 0 : win.webContents.setZoomFactor(1);
-    win == null ? void 0 : win.webContents.setVisualZoomLevelLimits(1, 1);
+  }), e.webContents.on("did-finish-load", () => {
+    e == null || e.webContents.send("main-process-message", (/* @__PURE__ */ new Date()).toLocaleString()), e == null || e.show(), e && !e.isDestroyed() && e.focus();
+  }), e.webContents.on("did-fail-load", (o, a, n) => {
+    console.error("Failed to load:", a, n);
+  }), e.webContents.session.setSpellCheckerEnabled(!1), d ? (e.loadURL(d), process.env.NODE_ENV === "development" && e.webContents.openDevTools()) : e.loadFile(r.join(p, "index.html")), e.webContents.setWindowOpenHandler(({ url: o }) => (o.startsWith("https:") && g.openExternal(o), { action: "deny" })), e.on("minimize", () => {
+  }), e.on("closed", () => {
+    e = null;
+  }), e.webContents.on("dom-ready", () => {
+    e == null || e.webContents.setZoomFactor(1), e == null || e.webContents.setVisualZoomLevelLimits(1, 1);
   });
 }
-function setupAutoUpdater() {
-  if (process.env.NODE_ENV === "production" && !process.env.VITE_DEV_SERVER_URL) {
-    console.log("Setting up auto-updater for production...");
-    autoUpdater.logger = console;
-    autoUpdater.autoDownload = false;
-    autoUpdater.on("checking-for-update", () => {
-      console.log("Checking for update...");
-      win == null ? void 0 : win.webContents.send("updater-message", "Vérification des mises à jour...");
+function v() {
+  process.env.NODE_ENV === "production" && !process.env.VITE_DEV_SERVER_URL ? (console.log("Setting up auto-updater for production..."), t.logger = console, t.autoDownload = !1, t.on("checking-for-update", () => {
+    console.log("Checking for update..."), e == null || e.webContents.send("updater-message", "Vérification des mises à jour...");
+  }), t.on("update-available", (o) => {
+    console.log("Update available:", o), e == null || e.webContents.send("updater-message", "Une mise à jour est disponible, veuillez mettre à jour l'application et redémarrer");
+  }), t.on("update-not-available", (o) => {
+    console.log("Update not available:", o), e == null || e.webContents.send("updater-message", "Aucune mise à jour disponible");
+  }), t.on("error", (o) => {
+    console.log("Error in auto-updater:", o), e == null || e.webContents.send("updater-error", `Erreur de mise à jour: ${o.message}`);
+  }), t.on("download-progress", (o) => {
+    let a = `Vitesse: ${Math.round(o.bytesPerSecond / 1024)} KB/s`;
+    a += ` - Téléchargé ${Math.round(o.percent)}%`, a += ` (${Math.round(o.transferred / 1024 / 1024)} MB / ${Math.round(o.total / 1024 / 1024)} MB)`, console.log(a), e == null || e.webContents.send("updater-progress", {
+      percent: Math.round(o.percent),
+      transferred: Math.round(o.transferred / 1024 / 1024),
+      total: Math.round(o.total / 1024 / 1024),
+      speed: Math.round(o.bytesPerSecond / 1024)
     });
-    autoUpdater.on("update-available", (info) => {
-      console.log("Update available:", info);
-      win == null ? void 0 : win.webContents.send("updater-message", "Une mise à jour est disponible, veuillez mettre à jour l'application et redémarrer");
-    });
-    autoUpdater.on("update-not-available", (info) => {
-      console.log("Update not available:", info);
-      win == null ? void 0 : win.webContents.send("updater-message", "Aucune mise à jour disponible");
-    });
-    autoUpdater.on("error", (err) => {
-      console.log("Error in auto-updater:", err);
-      win == null ? void 0 : win.webContents.send("updater-error", `Erreur de mise à jour: ${err.message}`);
-    });
-    autoUpdater.on("download-progress", (progressObj) => {
-      let log_message = `Vitesse: ${Math.round(progressObj.bytesPerSecond / 1024)} KB/s`;
-      log_message += ` - Téléchargé ${Math.round(progressObj.percent)}%`;
-      log_message += ` (${Math.round(progressObj.transferred / 1024 / 1024)} MB / ${Math.round(progressObj.total / 1024 / 1024)} MB)`;
-      console.log(log_message);
-      win == null ? void 0 : win.webContents.send("updater-progress", {
-        percent: Math.round(progressObj.percent),
-        transferred: Math.round(progressObj.transferred / 1024 / 1024),
-        total: Math.round(progressObj.total / 1024 / 1024),
-        speed: Math.round(progressObj.bytesPerSecond / 1024)
-      });
-    });
-    autoUpdater.on("update-downloaded", (info) => {
-      console.log("Update downloaded:", info);
-      win == null ? void 0 : win.webContents.send("updater-message", "Mise à jour téléchargée. L'application va redémarrer automatiquement dans quelques secondes...");
-      setTimeout(() => {
-        autoUpdater.quitAndInstall();
-      }, 5e3);
-    });
-    setTimeout(() => {
-      autoUpdater.checkForUpdates().catch((err) => {
-        console.log("Auto-updater check failed:", err.message);
-        win == null ? void 0 : win.webContents.send("updater-error", `Impossible de vérifier les mises à jour: ${err.message}`);
-      });
+  }), t.on("update-downloaded", (o) => {
+    console.log("Update downloaded:", o), e == null || e.webContents.send("updater-message", "Mise à jour téléchargée. L'application va redémarrer automatiquement dans quelques secondes..."), setTimeout(() => {
+      t.quitAndInstall();
     }, 5e3);
-  } else {
-    console.log("Auto-updater disabled in development mode");
-  }
+  }), setTimeout(() => {
+    t.checkForUpdates().catch((o) => {
+      console.log("Auto-updater check failed:", o.message), e == null || e.webContents.send("updater-error", `Impossible de vérifier les mises à jour: ${o.message}`);
+    });
+  }, 5e3)) : console.log("Auto-updater disabled in development mode");
 }
-app.whenReady().then(() => {
-  createWindow();
-  setupAutoUpdater();
+l.whenReady().then(() => {
+  m(), v();
 });
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") {
-    app.quit();
-  }
+l.on("window-all-closed", () => {
+  process.platform !== "darwin" && l.quit();
 });
-app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+l.on("activate", () => {
+  c.getAllWindows().length === 0 && m();
 });
-ipcMain.handle("print-receipt", async (event, htmlContent) => {
+s.handle("print-receipt", async (o, a) => {
   try {
-    const printWindow = new BrowserWindow({
+    const n = new c({
       width: 800,
       // Largeur standard
       height: 600,
       // Hauteur standard
-      show: false,
+      show: !1,
       // Masquer la fenêtre pendant le chargement
       webPreferences: {
-        nodeIntegration: false,
-        contextIsolation: true
+        nodeIntegration: !1,
+        contextIsolation: !0
       }
     });
-    await printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(htmlContent)}`);
-    await new Promise((resolve) => {
-      printWindow.webContents.once("did-finish-load", () => {
-        setTimeout(resolve, 500);
+    await n.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(a)}`), await new Promise((h) => {
+      n.webContents.once("did-finish-load", () => {
+        setTimeout(h, 500);
       });
     });
-    const printOptions = {
-      silent: false,
+    const f = {
+      silent: !1,
       // Ouvrir le dialogue d'impression Windows
-      printBackground: true,
+      printBackground: !0,
       // Inclure les arrière-plans
-      color: true,
+      color: !0,
       // Permettre l'impression couleur
       margins: {
         marginType: "default"
         // Marges par défaut
       },
-      landscape: false,
+      landscape: !1,
       // Portrait par défaut
       copies: 1,
       // Une seule copie par défaut
-      headerFooter: false,
+      headerFooter: !1,
       // Pas d'en-tête/pied de page automatique
-      shouldPrintBackgrounds: true,
-      shouldPrintSelectionOnly: false
+      shouldPrintBackgrounds: !0,
+      shouldPrintSelectionOnly: !1
     };
     console.log("Ouverture du dialogue d'impression Windows...");
-    const result = await printWindow.webContents.print(printOptions);
-    console.log("Impression:", result ? "Réussie" : "Annulée par l'utilisateur");
-    setTimeout(() => {
-      if (!printWindow.isDestroyed()) {
-        printWindow.close();
-      }
-    }, 1e3);
-    return {
-      success: true,
-      printed: result,
-      message: result ? "Document imprimé avec succès" : "Impression annulée par l'utilisateur"
+    const i = await n.webContents.print(f);
+    return console.log("Impression:", i ? "Réussie" : "Annulée par l'utilisateur"), setTimeout(() => {
+      n.isDestroyed() || n.close();
+    }, 1e3), {
+      success: !0,
+      printed: i,
+      message: i ? "Document imprimé avec succès" : "Impression annulée par l'utilisateur"
     };
-  } catch (error) {
-    console.error("Erreur lors de l'impression:", error);
-    return {
-      success: false,
-      error: error.message,
+  } catch (n) {
+    return console.error("Erreur lors de l'impression:", n), {
+      success: !1,
+      error: n.message,
       message: "Erreur d'impression - Vérifiez que votre imprimante est connectée"
     };
   }
 });
-ipcMain.handle("open-dev-tools", () => {
-  if (win) {
-    win.webContents.openDevTools();
-  }
+s.handle("open-dev-tools", () => {
+  e && e.webContents.openDevTools();
 });
-ipcMain.handle("window-minimize", () => {
-  if (win) {
-    win.minimize();
-  }
+s.handle("window-minimize", () => {
+  e && e.minimize();
 });
-ipcMain.handle("window-maximize", () => {
-  if (win) {
-    if (win.isMaximized()) {
-      win.unmaximize();
-    } else {
-      win.maximize();
-    }
-  }
+s.handle("window-maximize", () => {
+  e && (e.isMaximized() ? e.unmaximize() : e.maximize());
 });
-ipcMain.handle("window-close", () => {
-  if (win) {
-    win.close();
-  }
+s.handle("window-close", () => {
+  e && e.close();
 });
-ipcMain.handle("check-for-updates", async () => {
+s.handle("check-for-updates", async () => {
   try {
-    if (process.env.NODE_ENV === "production" && !process.env.VITE_DEV_SERVER_URL) {
-      console.log("Manual update check requested");
-      const result = await autoUpdater.checkForUpdates();
-      return { success: true, result };
-    } else {
-      return { success: false, error: "Auto-updater is disabled in development mode" };
-    }
-  } catch (error) {
-    console.error("Error checking for updates:", error);
-    return { success: false, error: error.message };
+    return process.env.NODE_ENV === "production" && !process.env.VITE_DEV_SERVER_URL ? (console.log("Manual update check requested"), { success: !0, result: await t.checkForUpdates() }) : { success: !1, error: "Auto-updater is disabled in development mode" };
+  } catch (o) {
+    return console.error("Error checking for updates:", o), { success: !1, error: o.message };
   }
 });
-ipcMain.handle("quit-and-install", () => {
+s.handle("quit-and-install", () => {
   try {
-    console.log("Quit and install requested");
-    autoUpdater.quitAndInstall();
-    return { success: true };
-  } catch (error) {
-    console.error("Error during quit and install:", error);
-    return { success: false, error: error.message };
+    return console.log("Quit and install requested"), t.quitAndInstall(), { success: !0 };
+  } catch (o) {
+    return console.error("Error during quit and install:", o), { success: !1, error: o.message };
   }
 });
-ipcMain.handle("get-app-version", () => {
-  return app.getVersion();
-});
-ipcMain.handle("restart-app", () => {
-  app.relaunch();
-  app.exit();
+s.handle("get-app-version", () => l.getVersion());
+s.handle("restart-app", () => {
+  l.relaunch(), l.exit();
 });
 export {
-  MAIN_DIST,
-  RENDERER_DIST,
-  VITE_DEV_SERVER_URL
+  V as MAIN_DIST,
+  p as RENDERER_DIST,
+  d as VITE_DEV_SERVER_URL
 };
-//# sourceMappingURL=main.js.map

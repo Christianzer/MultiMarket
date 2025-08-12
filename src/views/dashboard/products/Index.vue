@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { VirtualProductList } from '@/components/ui/virtual-list'
-import { Plus, Edit, Trash2, Eye, Loader2, Package, Search, Grid, List } from 'lucide-vue-next'
+import { Plus, Edit, Trash2, Eye, Loader2, Package, Search, Grid, List, Upload, X } from 'lucide-vue-next'
 import { api } from '@/services/api'
-import type { Product, CreateProductRequest, UpdateProductRequest } from '@/types/product'
+import type { Product, CreateProductRequest, UpdateProductRequest, CreateProductWithImageRequest, UpdateProductWithImageRequest } from '@/types/product'
+import { validateImageFile, createImagePreview, revokeImagePreview } from '@/utils/formData'
 import { useAuthStore } from '@/stores/auth'
 import { useProductsStore } from '@/stores/products'
 
@@ -26,7 +27,7 @@ const viewMode = ref<'table' | 'virtual'>('table')
 
 // Fonction debounce simple
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
-  let timeoutId: NodeJS.Timeout
+  let timeoutId: number
   return (...args: Parameters<T>) => {
     clearTimeout(timeoutId)
     timeoutId = setTimeout(() => fn(...args), delay)
@@ -47,8 +48,24 @@ const createForm = ref<CreateProductRequest>({
   price: ''
 })
 
+const createFormWithImage = ref<CreateProductWithImageRequest>({
+  code: '',
+  name: '',
+  price: '',
+  stock: undefined,
+  image: undefined
+})
+
 const editForm = ref<UpdateProductRequest>({})
+
+const editFormWithImage = ref<UpdateProductWithImageRequest>({
+  image: undefined
+})
+
 const submitting = ref(false)
+const imagePreviewUrl = ref<string | null>(null)
+const editImagePreviewUrl = ref<string | null>(null)
+const imageError = ref<string>('')
 
 const loadProducts = async (force = false) => {
   try {
@@ -67,7 +84,7 @@ const filterProducts = () => {
     baseFilteredProducts.value = products.value
   } else if (authStore.userRole === 'admin' || authStore.userRole === 'caissier') {
     baseFilteredProducts.value = authStore.supermarket 
-      ? productsStore.productsBySupermarket(authStore.supermarket.id)
+      ? productsStore.productsBySupermarket(authStore.supermarket.id.toString())
       : []
   } else {
     baseFilteredProducts.value = []
@@ -98,12 +115,87 @@ const filteredProducts = computed(() => {
   )
 })
 
+// Handle image file selection
+const handleImageSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (file) {
+    const validation = validateImageFile(file)
+    if (!validation.isValid) {
+      imageError.value = validation.error || 'Fichier invalide'
+      return
+    }
+    
+    imageError.value = ''
+    createFormWithImage.value.image = file
+    
+    // Clean previous preview
+    if (imagePreviewUrl.value) {
+      revokeImagePreview(imagePreviewUrl.value)
+    }
+    
+    // Create new preview
+    imagePreviewUrl.value = createImagePreview(file)
+  }
+}
+
+const handleEditImageSelect = (event: Event) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+  
+  if (file) {
+    const validation = validateImageFile(file)
+    if (!validation.isValid) {
+      imageError.value = validation.error || 'Fichier invalide'
+      return
+    }
+    
+    imageError.value = ''
+    editFormWithImage.value.image = file
+    
+    // Clean previous preview
+    if (editImagePreviewUrl.value) {
+      revokeImagePreview(editImagePreviewUrl.value)
+    }
+    
+    // Create new preview
+    editImagePreviewUrl.value = createImagePreview(file)
+  }
+}
+
+const clearImagePreview = () => {
+  if (imagePreviewUrl.value) {
+    revokeImagePreview(imagePreviewUrl.value)
+    imagePreviewUrl.value = null
+  }
+  createFormWithImage.value.image = undefined
+  imageError.value = ''
+}
+
+const clearEditImagePreview = () => {
+  if (editImagePreviewUrl.value) {
+    revokeImagePreview(editImagePreviewUrl.value)
+    editImagePreviewUrl.value = null
+  }
+  editFormWithImage.value.image = undefined
+  imageError.value = ''
+}
+
 const openCreateModal = () => {
   createForm.value = {
     code: '',
     name: '',
     price: ''
   }
+  createFormWithImage.value = {
+    code: '',
+    name: '',
+    price: '',
+    stock: undefined,
+    image: undefined
+  }
+  clearImagePreview()
   showCreateModal.value = true
 }
 
@@ -114,6 +206,14 @@ const openEditModal = (product: Product) => {
     name: product.name,
     price: product.price
   }
+  editFormWithImage.value = {
+    code: product.code,
+    name: product.name,
+    price: product.price,
+    stock: product.stock,
+    image: undefined
+  }
+  clearEditImagePreview()
   showEditModal.value = true
 }
 
@@ -131,15 +231,27 @@ const createProduct = async () => {
   try {
     submitting.value = true
     
-    // S'assurer que le prix est envoyé comme string
-    const productData = {
-      ...createForm.value,
-      price: createForm.value.price.toString()
+    // Use image upload if image is provided, otherwise use regular API
+    if (createFormWithImage.value.image) {
+      // Sync form data
+      createFormWithImage.value.code = createForm.value.code
+      createFormWithImage.value.name = createForm.value.name
+      createFormWithImage.value.price = createForm.value.price.toString()
+      
+      await productsStore.createProductWithImage(createFormWithImage.value)
+    } else {
+      // Regular creation without image
+      const productData = {
+        ...createForm.value,
+        price: createForm.value.price.toString()
+      }
+      
+      await productsStore.createProduct(productData)
     }
     
-    await productsStore.createProduct(productData)
     filterProducts()
     showCreateModal.value = false
+    clearImagePreview()
   } catch (err: any) {
     console.error('Erreur lors de la création du produit:', err)
   } finally {
@@ -153,15 +265,27 @@ const updateProduct = async () => {
   try {
     submitting.value = true
     
-    // S'assurer que le prix est envoyé comme string
-    const productData = {
-      ...editForm.value,
-      ...(editForm.value.price && { price: editForm.value.price.toString() })
+    // Use image upload if image is provided, otherwise use regular API
+    if (editFormWithImage.value.image) {
+      // Sync form data
+      editFormWithImage.value.code = editForm.value.code
+      editFormWithImage.value.name = editForm.value.name
+      editFormWithImage.value.price = editForm.value.price?.toString()
+      
+      await productsStore.updateProductWithImage(selectedProduct.value.id, editFormWithImage.value)
+    } else {
+      // Regular update without image
+      const productData = {
+        ...editForm.value,
+        ...(editForm.value.price && { price: editForm.value.price.toString() })
+      }
+      
+      await productsStore.updateProduct(selectedProduct.value.id.toString(), productData)
     }
     
-    await productsStore.updateProduct(selectedProduct.value.id, productData)
     filterProducts()
     showEditModal.value = false
+    clearEditImagePreview()
   } catch (err: any) {
     console.error('Erreur lors de la modification du produit:', err)
   } finally {
@@ -335,7 +459,10 @@ onMounted(async () => {
               >
                 <TableCell>
                   <div class="flex items-center space-x-3">
-                    <div class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                    <div v-if="product.image" class="h-8 w-8 rounded overflow-hidden">
+                      <img :src="product.image" :alt="product.name" class="h-full w-full object-cover" />
+                    </div>
+                    <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
                       <Package class="h-4 w-4 text-primary" />
                     </div>
                     <div class="font-medium">{{ product.name }}</div>
@@ -439,6 +566,52 @@ onMounted(async () => {
             <Label for="create-price">Prix (FCFA)</Label>
             <Input id="create-price" v-model="createForm.price" placeholder="2300" type="text" inputmode="numeric" pattern="[0-9]*" />
           </div>
+
+          <div class="space-y-2">
+            <Label for="create-stock">Stock initial (optionnel)</Label>
+            <Input id="create-stock" v-model="createFormWithImage.stock" placeholder="100" type="number" min="0" />
+          </div>
+          
+          <!-- Image upload -->
+          <div class="space-y-2">
+            <Label>Image du produit (optionnel)</Label>
+            
+            <!-- Upload area -->
+            <div v-if="!imagePreviewUrl" class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+              <Upload class="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+              <div class="space-y-1">
+                <p class="text-sm font-medium">Cliquez pour sélectionner une image</p>
+                <p class="text-xs text-muted-foreground">JPEG, PNG, WebP - Max 5MB</p>
+              </div>
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                @change="handleImageSelect"
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+            </div>
+            
+            <!-- Image preview -->
+            <div v-else class="relative">
+              <img
+                :src="imagePreviewUrl"
+                alt="Aperçu"
+                class="w-full h-32 object-cover rounded-lg border"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                @click="clearImagePreview"
+                class="absolute top-2 right-2"
+              >
+                <X class="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <!-- Error message -->
+            <p v-if="imageError" class="text-sm text-destructive">{{ imageError }}</p>
+          </div>
         </div>
         
         <DialogFooter class="gap-2">
@@ -478,6 +651,64 @@ onMounted(async () => {
             <Label for="edit-price">Prix (FCFA)</Label>
             <Input id="edit-price" v-model="editForm.price" type="text" inputmode="numeric" pattern="[0-9]*" />
           </div>
+
+          <div class="space-y-2">
+            <Label for="edit-stock">Stock</Label>
+            <Input id="edit-stock" v-model="editFormWithImage.stock" type="number" min="0" />
+          </div>
+          
+          <!-- Current image display -->
+          <div v-if="selectedProduct.image && !editImagePreviewUrl" class="space-y-2">
+            <Label>Image actuelle</Label>
+            <div class="relative">
+              <img
+                :src="selectedProduct.image"
+                alt="Image actuelle"
+                class="w-full h-32 object-cover rounded-lg border"
+              />
+            </div>
+          </div>
+          
+          <!-- Image upload -->
+          <div class="space-y-2">
+            <Label>{{ selectedProduct.image ? 'Changer l\'image' : 'Ajouter une image' }} (optionnel)</Label>
+            
+            <!-- Upload area -->
+            <div v-if="!editImagePreviewUrl" class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
+              <Upload class="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+              <div class="space-y-1">
+                <p class="text-sm font-medium">Cliquez pour sélectionner une nouvelle image</p>
+                <p class="text-xs text-muted-foreground">JPEG, PNG, WebP - Max 5MB</p>
+              </div>
+              <input
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                @change="handleEditImageSelect"
+                class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              />
+            </div>
+            
+            <!-- New image preview -->
+            <div v-else class="relative">
+              <img
+                :src="editImagePreviewUrl"
+                alt="Nouveau aperçu"
+                class="w-full h-32 object-cover rounded-lg border"
+              />
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                @click="clearEditImagePreview"
+                class="absolute top-2 right-2"
+              >
+                <X class="h-4 w-4" />
+              </Button>
+            </div>
+            
+            <!-- Error message -->
+            <p v-if="imageError" class="text-sm text-destructive">{{ imageError }}</p>
+          </div>
         </div>
         
         <DialogFooter class="gap-2">
@@ -501,7 +732,10 @@ onMounted(async () => {
         
         <div class="space-y-4 py-4" v-if="selectedProduct">
           <div class="flex items-center space-x-4">
-            <div class="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center">
+            <div v-if="selectedProduct.image" class="h-16 w-16 rounded-lg overflow-hidden">
+              <img :src="selectedProduct.image" :alt="selectedProduct.name" class="h-full w-full object-cover" />
+            </div>
+            <div v-else class="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center">
               <Package class="h-8 w-8 text-primary" />
             </div>
             <div>

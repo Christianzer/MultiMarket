@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { api } from '@/services/api'
-import type { Product, CreateProductRequest, UpdateProductRequest } from '@/types/product'
+import type { Product, CreateProductRequest, UpdateProductRequest, CreateProductWithImageRequest, UpdateProductWithImageRequest } from '@/types/product'
 import { performanceMonitor } from '@/utils/performance'
 
 interface ProductsState {
@@ -29,7 +29,7 @@ export const useProductsStore = defineStore('products', {
 
     // Produits par supermarché (pour les admins/caissiers)
     productsBySupermarket: (state) => (supermarketId: string) => {
-      return state.products.filter(product => product.supermarket.id === supermarketId)
+      return state.products.filter(product => product.supermarket.id.toString() === supermarketId)
     },
 
     // Recherche dans les produits
@@ -88,7 +88,39 @@ export const useProductsStore = defineStore('products', {
         
         // Ajouter le nouveau produit au cache
         if (newProduct && newProduct.data) {
-          this.products.push(newProduct.data)
+          this.products.push(newProduct.data as Product)
+        }
+        
+        return newProduct
+      } catch (err: any) {
+        this.error = err.message || 'Erreur lors de la création'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Créer un produit avec image
+    async createProductWithImage(productData: CreateProductWithImageRequest) {
+      try {
+        this.loading = true
+        
+        const formData = new FormData()
+        formData.append('code', productData.code)
+        formData.append('name', productData.name)
+        formData.append('price', productData.price)
+        if (productData.stock !== undefined) {
+          formData.append('stock', productData.stock.toString())
+        }
+        if (productData.image) {
+          formData.append('image', productData.image)
+        }
+        
+        const newProduct = await api.products.createWithImage(formData)
+        
+        // Ajouter le nouveau produit au cache
+        if (newProduct && newProduct.data) {
+          this.products.push(newProduct.data as Product)
         }
         
         return newProduct
@@ -104,12 +136,45 @@ export const useProductsStore = defineStore('products', {
     async updateProduct(id: string, productData: UpdateProductRequest) {
       try {
         this.loading = true
-        const updatedProduct = await api.products.update(id, productData)
+        const updatedProduct = await api.products.update(parseInt(id), productData)
+        
+        // Mettre à jour le produit dans le cache
+        const index = this.products.findIndex(p => p.id.toString() === id)
+        if (index !== -1 && updatedProduct && updatedProduct.data) {
+          this.products[index] = updatedProduct.data as Product
+        }
+        
+        return updatedProduct
+      } catch (err: any) {
+        this.error = err.message || 'Erreur lors de la mise à jour'
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Mettre à jour un produit avec image
+    async updateProductWithImage(id: number, productData: UpdateProductWithImageRequest) {
+      try {
+        this.loading = true
+        
+        const formData = new FormData()
+        if (productData.code) formData.append('code', productData.code)
+        if (productData.name) formData.append('name', productData.name)
+        if (productData.price) formData.append('price', productData.price)
+        if (productData.stock !== undefined) {
+          formData.append('stock', productData.stock.toString())
+        }
+        if (productData.image) {
+          formData.append('image', productData.image)
+        }
+        
+        const updatedProduct = await api.products.updateWithImage(id, formData)
         
         // Mettre à jour le produit dans le cache
         const index = this.products.findIndex(p => p.id === id)
         if (index !== -1 && updatedProduct && updatedProduct.data) {
-          this.products[index] = updatedProduct.data
+          this.products[index] = updatedProduct.data as Product
         }
         
         return updatedProduct
@@ -125,10 +190,10 @@ export const useProductsStore = defineStore('products', {
     async deleteProduct(id: string) {
       try {
         this.loading = true
-        await api.products.delete(id)
+        await api.products.delete(parseInt(id))
         
         // Supprimer le produit du cache
-        this.products = this.products.filter(p => p.id !== id)
+        this.products = this.products.filter(p => p.id.toString() !== id)
       } catch (err: any) {
         this.error = err.message || 'Erreur lors de la suppression'
         throw err
