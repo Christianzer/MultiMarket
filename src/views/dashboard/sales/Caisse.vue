@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Plus, Minus, Trash2, ShoppingCart, Search, Printer, Check, X, Package } from 'lucide-vue-next'
+import { Plus, Minus, Trash2, ShoppingCart, Search, Printer, Check, X, Package, Loader2 } from 'lucide-vue-next'
 import { api } from '@/services/api'
 import type { CartItem, Sale, ProductSearchResult } from '@/types/sale'
 import '@/types/electron'
@@ -215,14 +215,14 @@ const processSale = async () => {
 }
 
 // Imprimer le reçu avec Electron ou fallback
-const printReceipt = () => {
+const printReceipt = async () => {
   if (!lastSale.value) return
   
   // Vérifier si on est dans Electron
-  if (window.electronAPI) {
+  if (window.electronAPI && window.electronAPI.printReceipt) {
     // Utiliser l'API Electron pour l'impression
     const receiptContent = generateReceiptHTML(lastSale.value)
-    window.electronAPI.printReceipt(receiptContent)
+    await window.electronAPI.printReceipt(receiptContent)
   } else {
     // Fallback pour le navigateur web
     const receiptContent = generateReceiptHTML(lastSale.value)
@@ -495,7 +495,9 @@ const searchInput = ref<HTMLInputElement>()
 onMounted(async () => {
   await loadProducts()
   nextTick(() => {
-    searchInput.value?.focus()
+    if (searchInput.value) {
+      searchInput.value.focus()
+    }
   })
 })
 </script>
