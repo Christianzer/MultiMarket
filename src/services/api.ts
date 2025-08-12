@@ -148,15 +148,35 @@ export const api = {
   products: {
     getAll: () => apiService.get('/products'),
     getById: (id: number) => apiService.get(`/products/${id}`),
-    create: (product: any) => apiService.post('/products', product),
+    create: (product: any) => apiService.request('/products', {
+      method: 'POST',
+      body: JSON.stringify(product),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    }),
     createWithImage: (productData: FormData) => apiService.request('/products', {
       method: 'POST',
       body: productData,
+      headers: {
+        'Accept': 'application/json'
+      }
     }),
-    update: (id: number, product: any) => apiService.put(`/products/${id}`, product),
+    update: (id: number, product: any) => apiService.request(`/products/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(product),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    }),
     updateWithImage: (id: number, productData: FormData) => apiService.request(`/products/${id}`, {
       method: 'PUT',
       body: productData,
+      headers: {
+        'Accept': 'application/json'
+      }
     }),
     delete: (id: number) => apiService.delete(`/products/${id}`),
   },
