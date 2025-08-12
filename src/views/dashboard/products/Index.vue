@@ -83,7 +83,7 @@ const filterProducts = () => {
   if (authStore.userRole === 'super_admin') {
     baseFilteredProducts.value = products.value
   } else if (authStore.userRole === 'admin' || authStore.userRole === 'caissier') {
-    baseFilteredProducts.value = authStore.supermarket 
+    baseFilteredProducts.value = authStore.supermarket
       ? productsStore.productsBySupermarket(authStore.supermarket.id.toString())
       : []
   } else {
@@ -106,9 +106,9 @@ const filteredProducts = computed(() => {
   if (!debouncedSearchQuery.value.trim()) {
     return baseFilteredProducts.value
   }
-  
+
   const query = debouncedSearchQuery.value.toLowerCase().trim()
-  return baseFilteredProducts.value.filter(product => 
+  return baseFilteredProducts.value.filter(product =>
     product.name.toLowerCase().includes(query) ||
     product.code.toLowerCase().includes(query) ||
     (authStore.userRole === 'super_admin' && product.supermarket.name.toLowerCase().includes(query))
@@ -119,22 +119,22 @@ const filteredProducts = computed(() => {
 const handleImageSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  
+
   if (file) {
     const validation = validateImageFile(file)
     if (!validation.isValid) {
       imageError.value = validation.error || 'Fichier invalide'
       return
     }
-    
+
     imageError.value = ''
     createFormWithImage.value.image = file
-    
+
     // Clean previous preview
     if (imagePreviewUrl.value) {
       revokeImagePreview(imagePreviewUrl.value)
     }
-    
+
     // Create new preview
     imagePreviewUrl.value = createImagePreview(file)
   }
@@ -143,22 +143,22 @@ const handleImageSelect = (event: Event) => {
 const handleEditImageSelect = (event: Event) => {
   const target = event.target as HTMLInputElement
   const file = target.files?.[0]
-  
+
   if (file) {
     const validation = validateImageFile(file)
     if (!validation.isValid) {
       imageError.value = validation.error || 'Fichier invalide'
       return
     }
-    
+
     imageError.value = ''
     editFormWithImage.value.image = file
-    
+
     // Clean previous preview
     if (editImagePreviewUrl.value) {
       revokeImagePreview(editImagePreviewUrl.value)
     }
-    
+
     // Create new preview
     editImagePreviewUrl.value = createImagePreview(file)
   }
@@ -230,14 +230,14 @@ const openDeleteModal = (product: Product) => {
 const createProduct = async () => {
   try {
     submitting.value = true
-    
+
     // Use image upload if image is provided, otherwise use regular API
     if (createFormWithImage.value.image) {
       // Sync form data
       createFormWithImage.value.code = createForm.value.code
       createFormWithImage.value.name = createForm.value.name
       createFormWithImage.value.price = createForm.value.price.toString()
-      
+
       await productsStore.createProductWithImage(createFormWithImage.value)
     } else {
       // Regular creation without image
@@ -245,11 +245,11 @@ const createProduct = async () => {
         ...createForm.value,
         price: createForm.value.price.toString()
       }
-      
+
       await productsStore.createProduct(productData)
     }
-    
-    filterProducts()
+
+    await loadProducts()
     showCreateModal.value = false
     clearImagePreview()
   } catch (err: any) {
@@ -261,17 +261,17 @@ const createProduct = async () => {
 
 const updateProduct = async () => {
   if (!selectedProduct.value) return
-  
+
   try {
     submitting.value = true
-    
+
     // Use image upload if image is provided, otherwise use regular API
     if (editFormWithImage.value.image) {
       // Sync form data
       editFormWithImage.value.code = editForm.value.code
       editFormWithImage.value.name = editForm.value.name
       editFormWithImage.value.price = editForm.value.price?.toString()
-      
+
       await productsStore.updateProductWithImage(selectedProduct.value.id, editFormWithImage.value)
     } else {
       // Regular update without image
@@ -279,10 +279,10 @@ const updateProduct = async () => {
         ...editForm.value,
         ...(editForm.value.price && { price: editForm.value.price.toString() })
       }
-      
+
       await productsStore.updateProduct(selectedProduct.value.id.toString(), productData)
     }
-    
+
     filterProducts()
     showEditModal.value = false
     clearEditImagePreview()
@@ -295,7 +295,7 @@ const updateProduct = async () => {
 
 const deleteProduct = async () => {
   if (!selectedProduct.value) return
-  
+
   try {
     submitting.value = true
     await productsStore.deleteProduct(selectedProduct.value.id)
@@ -309,9 +309,9 @@ const deleteProduct = async () => {
 }
 
 const formatPrice = (price: string) => {
-  return `${parseFloat(price).toLocaleString('fr-FR', { 
+  return `${parseFloat(price).toLocaleString('fr-FR', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 0 
+    maximumFractionDigits: 0
   })} FCFA`
 }
 
@@ -364,11 +364,11 @@ onMounted(async () => {
         </CardHeader>
         <CardContent>
           <div class="text-2xl font-bold">
-            {{ filteredProducts.length > 0 
+            {{ filteredProducts.length > 0
               ? (filteredProducts.reduce((sum, p) => sum + parseFloat(p.price), 0) / filteredProducts.length).toLocaleString('fr-FR', {
                   minimumFractionDigits: 0,
                   maximumFractionDigits: 0
-                }) 
+                })
               : '0' }} FCFA
           </div>
           <p class="text-xs text-muted-foreground">Par produit</p>
@@ -451,9 +451,9 @@ onMounted(async () => {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow 
-                v-for="product in filteredProducts" 
-                :key="product.id" 
+              <TableRow
+                v-for="product in filteredProducts"
+                :key="product.id"
                 v-memo="[product.name, product.code, product.price, product.stock]"
                 class="hover:bg-muted/50"
               >
@@ -550,32 +550,27 @@ onMounted(async () => {
             Ajouter un nouveau produit au catalogue
           </DialogDescription>
         </DialogHeader>
-        
+
         <div class="space-y-4 py-4">
           <div class="space-y-2">
             <Label for="create-code">Code produit</Label>
             <Input id="create-code" v-model="createForm.code" placeholder="CAR006" />
           </div>
-          
+
           <div class="space-y-2">
             <Label for="create-name">Nom du produit</Label>
             <Input id="create-name" v-model="createForm.name" placeholder="Chocolat Milka" />
           </div>
-          
+
           <div class="space-y-2">
             <Label for="create-price">Prix (FCFA)</Label>
             <Input id="create-price" v-model="createForm.price" placeholder="2300" type="text" inputmode="numeric" pattern="[0-9]*" />
           </div>
 
-          <div class="space-y-2">
-            <Label for="create-stock">Stock initial (optionnel)</Label>
-            <Input id="create-stock" v-model="createFormWithImage.stock" placeholder="100" type="number" min="0" />
-          </div>
-          
           <!-- Image upload -->
           <div class="space-y-2">
             <Label>Image du produit (optionnel)</Label>
-            
+
             <!-- Upload area -->
             <div v-if="!imagePreviewUrl" class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
               <Upload class="mx-auto h-8 w-8 text-muted-foreground mb-2" />
@@ -590,7 +585,7 @@ onMounted(async () => {
                 class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
-            
+
             <!-- Image preview -->
             <div v-else class="relative">
               <img
@@ -608,12 +603,12 @@ onMounted(async () => {
                 <X class="h-4 w-4" />
               </Button>
             </div>
-            
+
             <!-- Error message -->
             <p v-if="imageError" class="text-sm text-destructive">{{ imageError }}</p>
           </div>
         </div>
-        
+
         <DialogFooter class="gap-2">
           <Button variant="outline" @click="showCreateModal = false" :disabled="submitting">
             Annuler
@@ -635,28 +630,24 @@ onMounted(async () => {
             Modifier les informations du produit
           </DialogDescription>
         </DialogHeader>
-        
+
         <div class="space-y-4 py-4" v-if="selectedProduct">
           <div class="space-y-2">
             <Label for="edit-code">Code produit</Label>
             <Input id="edit-code" v-model="editForm.code" />
           </div>
-          
+
           <div class="space-y-2">
             <Label for="edit-name">Nom du produit</Label>
             <Input id="edit-name" v-model="editForm.name" />
           </div>
-          
+
           <div class="space-y-2">
             <Label for="edit-price">Prix (FCFA)</Label>
             <Input id="edit-price" v-model="editForm.price" type="text" inputmode="numeric" pattern="[0-9]*" />
           </div>
 
-          <div class="space-y-2">
-            <Label for="edit-stock">Stock</Label>
-            <Input id="edit-stock" v-model="editFormWithImage.stock" type="number" min="0" />
-          </div>
-          
+
           <!-- Current image display -->
           <div v-if="selectedProduct.image && !editImagePreviewUrl" class="space-y-2">
             <Label>Image actuelle</Label>
@@ -668,11 +659,11 @@ onMounted(async () => {
               />
             </div>
           </div>
-          
+
           <!-- Image upload -->
           <div class="space-y-2">
             <Label>{{ selectedProduct.image ? 'Changer l\'image' : 'Ajouter une image' }} (optionnel)</Label>
-            
+
             <!-- Upload area -->
             <div v-if="!editImagePreviewUrl" class="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
               <Upload class="mx-auto h-8 w-8 text-muted-foreground mb-2" />
@@ -687,7 +678,7 @@ onMounted(async () => {
                 class="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
-            
+
             <!-- New image preview -->
             <div v-else class="relative">
               <img
@@ -705,12 +696,12 @@ onMounted(async () => {
                 <X class="h-4 w-4" />
               </Button>
             </div>
-            
+
             <!-- Error message -->
             <p v-if="imageError" class="text-sm text-destructive">{{ imageError }}</p>
           </div>
         </div>
-        
+
         <DialogFooter class="gap-2">
           <Button variant="outline" @click="showEditModal = false" :disabled="submitting">
             Annuler
@@ -729,7 +720,7 @@ onMounted(async () => {
         <DialogHeader>
           <DialogTitle>Détails du Produit</DialogTitle>
         </DialogHeader>
-        
+
         <div class="space-y-4 py-4" v-if="selectedProduct">
           <div class="flex items-center space-x-4">
             <div v-if="selectedProduct.image" class="h-16 w-16 rounded-lg overflow-hidden">
@@ -743,7 +734,7 @@ onMounted(async () => {
               <Badge variant="outline">{{ selectedProduct.code }}</Badge>
             </div>
           </div>
-          
+
           <div class="space-y-2">
             <div class="flex justify-between">
               <span class="text-sm text-muted-foreground">ID:</span>
@@ -781,7 +772,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        
+
         <DialogFooter>
           <Button @click="showDetailsModal = false">Fermer</Button>
         </DialogFooter>
@@ -797,7 +788,7 @@ onMounted(async () => {
             Êtes-vous sûr de vouloir supprimer ce produit ? Cette action est irréversible.
           </DialogDescription>
         </DialogHeader>
-        
+
         <div class="py-4" v-if="selectedProduct">
           <div class="flex items-center space-x-3 p-3 bg-muted rounded-lg">
             <div class="h-10 w-10 rounded bg-primary/10 flex items-center justify-center">
@@ -809,7 +800,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        
+
         <DialogFooter class="gap-2">
           <Button variant="outline" @click="showDeleteModal = false" :disabled="submitting">
             Annuler

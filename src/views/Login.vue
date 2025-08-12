@@ -37,10 +37,10 @@ const form = useForm({
 const onSubmit = form.handleSubmit(async (values) => {
   loading.value = true;
   error.value = '';
-  
+
   try {
     const response = await authStore.login(values);
-    
+
     // Rediriger vers le bon dashboard selon le rôle
     const userRole = response.user.role;
     if (userRole === 'super_admin') {
