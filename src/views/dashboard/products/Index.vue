@@ -221,7 +221,6 @@ const openEditModal = (product: Product) => {
     code: product.code,
     name: product.name,
     price: product.price,
-    stock: product.stock,
     image: undefined
   }
   clearEditImagePreview()
