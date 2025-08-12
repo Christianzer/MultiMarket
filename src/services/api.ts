@@ -156,25 +156,20 @@ export const api = {
         'Accept': 'application/json'
       }
     }),
-    createWithImage: (productData: FormData) => apiService.request('/products', {
-      method: 'POST',
-      body: productData,
-      headers: {
-        'Accept': 'application/json'
-      }
-    }),
+    uploadImage: (id: number, imageFille: File) => {
+      const formData = new FormData()
+      formData.append('image', imageFille)
+      return apiService.request(`/products/${id}/image`, {
+        method: 'POST',
+        body: formData,
+        headers: {} // Remove Content-Type to let browser set multipart boundary
+      })
+    },
     update: (id: number, product: any) => apiService.request(`/products/${id}`, {
       method: 'PUT',
       body: JSON.stringify(product),
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      }
-    }),
-    updateWithImage: (id: number, productData: FormData) => apiService.request(`/products/${id}`, {
-      method: 'PUT',
-      body: productData,
-      headers: {
         'Accept': 'application/json'
       }
     }),

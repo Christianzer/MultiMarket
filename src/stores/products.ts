@@ -100,37 +100,6 @@ export const useProductsStore = defineStore('products', {
       }
     },
 
-    // Créer un produit avec image
-    async createProductWithImage(productData: CreateProductWithImageRequest) {
-      try {
-        this.loading = true
-        
-        const formData = new FormData()
-        formData.append('code', productData.code)
-        formData.append('name', productData.name)
-        formData.append('price', productData.price)
-        if (productData.stock !== undefined) {
-          formData.append('stock', productData.stock.toString())
-        }
-        if (productData.image) {
-          formData.append('image', productData.image)
-        }
-        
-        const newProduct = await api.products.createWithImage(formData)
-        
-        // Ajouter le nouveau produit au cache
-        if (newProduct && newProduct.data) {
-          this.products.push(newProduct.data as Product)
-        }
-        
-        return newProduct
-      } catch (err: any) {
-        this.error = err.message || 'Erreur lors de la création'
-        throw err
-      } finally {
-        this.loading = false
-      }
-    },
 
     // Mettre à jour un produit et le cache
     async updateProduct(id: string, productData: UpdateProductRequest) {
@@ -153,38 +122,6 @@ export const useProductsStore = defineStore('products', {
       }
     },
 
-    // Mettre à jour un produit avec image
-    async updateProductWithImage(id: number, productData: UpdateProductWithImageRequest) {
-      try {
-        this.loading = true
-        
-        const formData = new FormData()
-        if (productData.code) formData.append('code', productData.code)
-        if (productData.name) formData.append('name', productData.name)
-        if (productData.price) formData.append('price', productData.price)
-        if (productData.stock !== undefined) {
-          formData.append('stock', productData.stock.toString())
-        }
-        if (productData.image) {
-          formData.append('image', productData.image)
-        }
-        
-        const updatedProduct = await api.products.updateWithImage(id, formData)
-        
-        // Mettre à jour le produit dans le cache
-        const index = this.products.findIndex(p => p.id === id)
-        if (index !== -1 && updatedProduct && updatedProduct.data) {
-          this.products[index] = updatedProduct.data as Product
-        }
-        
-        return updatedProduct
-      } catch (err: any) {
-        this.error = err.message || 'Erreur lors de la mise à jour'
-        throw err
-      } finally {
-        this.loading = false
-      }
-    },
 
     // Supprimer un produit et mettre à jour le cache
     async deleteProduct(id: string) {

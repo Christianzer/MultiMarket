@@ -13,14 +13,13 @@ import { api } from '@/services/api'
 import type { Product, CreateProductRequest, UpdateProductRequest, CreateProductWithImageRequest, UpdateProductWithImageRequest } from '@/types/product'
 import { validateImageFile, createImagePreview, revokeImagePreview } from '@/utils/formData'
 import { useAuthStore } from '@/stores/auth'
-import { useProductsStore } from '@/stores/products'
 
 const authStore = useAuthStore()
-const productsStore = useProductsStore()
 
-const products = computed(() => productsStore.products)
-const loading = computed(() => productsStore.loading)
-const error = computed(() => productsStore.error)
+// Variables réactives locales pour remplacer le store
+const products = ref<Product[]>([])
+const loading = ref(false)
+const error = ref('')
 const searchQuery = ref('')
 const debouncedSearchQuery = ref('')
 const viewMode = ref<'table' | 'virtual'>('table')
@@ -52,7 +51,6 @@ const createFormWithImage = ref<CreateProductWithImageRequest>({
   code: '',
   name: '',
   price: '',
-  stock: undefined,
   image: undefined
 })
 
@@ -71,10 +69,26 @@ const editFileInput = ref<HTMLInputElement | null>(null)
 
 const loadProducts = async (force = false) => {
   try {
-    await productsStore.fetchProducts(force)
+    loading.value = true
+    error.value = ''
+    
+    const response = await api.products.getAll()
+    
+    if (response && response.data && Array.isArray(response.data)) {
+      products.value = response.data as Product[]
+    } else if (response && Array.isArray(response)) {
+      products.value = response as unknown as Product[]
+    } else {
+      products.value = []
+      error.value = 'Format de données inattendu'
+    }
+    
     filterProducts()
   } catch (err: any) {
+    error.value = err.message || 'Erreur lors du chargement des produits'
     console.error('Erreur lors du chargement des produits:', err)
+  } finally {
+    loading.value = false
   }
 }
 
@@ -86,7 +100,7 @@ const filterProducts = () => {
     baseFilteredProducts.value = products.value
   } else if (authStore.userRole === 'admin' || authStore.userRole === 'caissier') {
     baseFilteredProducts.value = authStore.supermarket
-      ? productsStore.productsBySupermarket(authStore.supermarket.id.toString())
+      ? products.value.filter(product => product.supermarket.id.toString() === authStore.supermarket.id.toString())
       : []
   } else {
     baseFilteredProducts.value = []
@@ -203,7 +217,6 @@ const openCreateModal = () => {
     code: '',
     name: '',
     price: '',
-    stock: undefined,
     image: undefined
   }
   clearImagePreview()
@@ -240,29 +253,29 @@ const openDeleteModal = (product: Product) => {
 const createProduct = async () => {
   try {
     submitting.value = true
+    error.value = ''
 
-    // Use image upload if image is provided, otherwise use regular API
-    if (createFormWithImage.value.image) {
-      // Sync form data
-      createFormWithImage.value.code = createForm.value.code
-      createFormWithImage.value.name = createForm.value.name
-      createFormWithImage.value.price = createForm.value.price.toString()
-
-      await productsStore.createProductWithImage(createFormWithImage.value)
-    } else {
-      // Regular creation without image
-      const productData = {
-        ...createForm.value,
-        price: createForm.value.price.toString()
-      }
-
-      await productsStore.createProduct(productData)
+    const productData = {
+      ...createForm.value,
+      price: createForm.value.price.toString()
     }
 
-    await loadProducts()
+    const response = await api.products.create(productData)
+
+    if (createFormWithImage.value.image && response && response.data) {
+      try {
+        await api.products.uploadImage((response.data as Product).id, createFormWithImage.value.image)
+        // Recharger les produits pour avoir l'image mise à jour
+      } catch (imageErr) {
+        console.warn('Produit créé mais erreur lors de l\'upload de l\'image:', imageErr)
+      }
+    }
+
     showCreateModal.value = false
     clearImagePreview()
+    await loadProducts()
   } catch (err: any) {
+    error.value = err.message || 'Erreur lors de la création du produit'
     console.error('Erreur lors de la création du produit:', err)
   } finally {
     submitting.value = false
@@ -274,29 +287,29 @@ const updateProduct = async () => {
 
   try {
     submitting.value = true
+    error.value = ''
 
-    // Use image upload if image is provided, otherwise use regular API
-    if (editFormWithImage.value.image) {
-      // Sync form data
-      editFormWithImage.value.code = editForm.value.code
-      editFormWithImage.value.name = editForm.value.name
-      editFormWithImage.value.price = editForm.value.price?.toString()
-
-      await productsStore.updateProductWithImage(selectedProduct.value.id, editFormWithImage.value)
-    } else {
-      // Regular update without image
-      const productData = {
-        ...editForm.value,
-        ...(editForm.value.price && { price: editForm.value.price.toString() })
-      }
-
-      await productsStore.updateProduct(selectedProduct.value.id.toString(), productData)
+    const productData = {
+      ...editForm.value,
+      ...(editForm.value.price && { price: editForm.value.price.toString() })
     }
 
-    filterProducts()
+    const response = await api.products.update(selectedProduct.value.id, productData)
+
+    // Si une image est fournie, l'uploader séparément
+    if (editFormWithImage.value.image) {
+      try {
+        await api.products.uploadImage(selectedProduct.value.id, editFormWithImage.value.image)
+      } catch (imageErr) {
+        console.warn('Produit modifié mais erreur lors de l\'upload de l\'image:', imageErr)
+      }
+    }
+
     showEditModal.value = false
     clearEditImagePreview()
+    await loadProducts()
   } catch (err: any) {
+    error.value = err.message || 'Erreur lors de la modification du produit'
     console.error('Erreur lors de la modification du produit:', err)
   } finally {
     submitting.value = false
@@ -308,10 +321,14 @@ const deleteProduct = async () => {
 
   try {
     submitting.value = true
-    await productsStore.deleteProduct(selectedProduct.value.id)
-    filterProducts()
+    error.value = ''
+    
+    await api.products.delete(selectedProduct.value.id)
+
     showDeleteModal.value = false
+    await loadProducts()
   } catch (err: any) {
+    error.value = err.message || 'Erreur lors de la suppression du produit'
     console.error('Erreur lors de la suppression du produit:', err)
   } finally {
     submitting.value = false
