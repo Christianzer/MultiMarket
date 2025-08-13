@@ -33,6 +33,24 @@ export const ROLE_MENUS: Record<string, MenuGroup[]> = {
           path: '/dashboard/users',
           icon: 'Users',
           roles: ['super_admin']
+        },
+        {
+          title: 'Produits',
+          path: '/dashboard/products',
+          icon: 'Package',
+          roles: ['super_admin']
+        },
+        {
+          title: 'Restockage',
+          path: '/dashboard/restock',
+          icon: 'Package2',
+          roles: ['super_admin']
+        },
+        {
+          title: 'Ventes',
+          path: '/dashboard/ventes',
+          icon: 'Receipt',
+          roles: ['super_admin']
         }
       ]
     }

@@ -48,7 +48,7 @@ const openCommandIndex = ref<number | null>(null)
 // Produits filtrés pour le supermarché de l'admin
 const filteredProducts = computed(() => {
   if (authStore.userRole === 'admin' && authStore.supermarket) {
-    return products.value.filter(product => 
+    return products.value.filter(product =>
       product.supermarket.id === authStore.supermarket?.id
     )
   }
@@ -106,7 +106,7 @@ const validateRestockItems = (): boolean => {
       return false
     }
   }
-  
+
   // Vérifier qu'il n'y a pas de doublons de produits
   const productIds = restockItems.value.map(item => item.productId)
   const uniqueProductIds = new Set(productIds)
@@ -132,12 +132,12 @@ const performBulkRestock = async () => {
     }
 
     await api.restock.bulkRestock(bulkData)
-    
+
     // Réinitialiser le formulaire
     restockItems.value = [{ productId: '', quantity: '' }]
     globalNote.value = ''
     showBulkRestockModal.value = false
-    
+
     // Recharger l'historique
     await loadRestockHistory()
   } catch (err: any) {
@@ -187,7 +187,7 @@ const parseQuickInput = () => {
     const match = line.trim().match(/^(.+?):(\d+)$/)
     if (match) {
       const [, codeOrName, quantity] = match
-      const product = filteredProducts.value.find(p => 
+      const product = filteredProducts.value.find(p =>
         p.code.toLowerCase() === codeOrName.toLowerCase() ||
         p.name.toLowerCase().includes(codeOrName.toLowerCase())
       )
@@ -227,9 +227,9 @@ const filteredRestockHistory = computed(() => {
   if (!searchQuery.value.trim()) {
     return restockHistory.value
   }
-  
+
   const query = searchQuery.value.toLowerCase().trim()
-  return restockHistory.value.filter(restock => 
+  return restockHistory.value.filter(restock =>
     restock.product.name.toLowerCase().includes(query) ||
     restock.product.code.toLowerCase().includes(query) ||
     (restock.note && restock.note.toLowerCase().includes(query)) ||
@@ -267,7 +267,7 @@ const cancelDelete = () => {
 const selectProductFromCommand = (product: any, index: number) => {
   restockItems.value[index].productId = product.id.toString()
   openCommandIndex.value = null
-  
+
   // Focus sur la quantité
   nextTick(() => {
     const quantityInput = document.querySelector(`[data-quantity-index="${index}"]`) as HTMLInputElement
@@ -280,7 +280,7 @@ const selectProductFromCommand = (product: any, index: number) => {
 const getSelectedProductDisplay = (index: number) => {
   const item = restockItems.value[index]
   if (!item.productId) return 'Sélectionner un produit'
-  
+
   const product = filteredProducts.value.find(p => p.id.toString() === item.productId)
   return product ? `${product.name} (${product.code})` : 'Produit inconnu'
 }
@@ -390,7 +390,7 @@ onMounted(async () => {
               <Loader2 class="h-8 w-8 animate-spin" />
               <span class="ml-2">Chargement de l'historique...</span>
             </div>
-            
+
             <div v-else-if="filteredRestockHistory.length === 0" class="text-center py-8 text-muted-foreground">
               <Package class="mx-auto h-12 w-12 mb-4 opacity-50" />
               <p>{{ searchQuery ? 'Aucun restockage trouvé' : 'Aucun restockage effectué' }}</p>
@@ -440,9 +440,9 @@ onMounted(async () => {
                     <Badge variant="outline">{{ restock.user.username }}</Badge>
                   </TableCell>
                   <TableCell>
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       @click="openDeleteModal(restock)"
                       class="text-destructive hover:text-destructive"
                     >
@@ -464,7 +464,7 @@ onMounted(async () => {
 
     <!-- Modal de restockage en masse -->
     <Dialog v-model:open="showBulkRestockModal">
-      <DialogContent class="sm:max-w-2xl max-h-[80vh] overflow-y-auto" :disableOutsideClick="true">
+      <DialogContent class="max-w-2xl max-h-[80vh] overflow-y-auto" :disableOutsideClick="true">
         <DialogHeader>
           <DialogTitle>Restockage en Masse</DialogTitle>
           <DialogDescription>
@@ -481,7 +481,7 @@ onMounted(async () => {
             </Button>
           </div>
         </DialogHeader>
-        
+
         <div class="space-y-4 py-4">
           <!-- Mode saisie rapide -->
           <div v-if="quickInputMode" class="space-y-4">
@@ -504,106 +504,106 @@ onMounted(async () => {
 
           <!-- Mode normal -->
           <div v-else>
-            <div v-for="(item, index) in restockItems" :key="index" class="border rounded-lg p-4 space-y-4">
-            <div class="flex justify-between items-center">
-              <h4 class="font-medium">Produit {{ index + 1 }}</h4>
-              <Button 
-                v-if="restockItems.length > 1" 
-                variant="ghost" 
-                size="sm" 
-                @click="removeRestockItem(index)"
-                class="text-destructive hover:text-destructive"
-              >
-                <Trash2 class="h-4 w-4" />
-              </Button>
-            </div>
-            
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-2">
-                <Label>Produit</Label>
-                <Popover :open="openCommandIndex === index" @update:open="(open) => openCommandIndex = open ? index : null">
-                  <PopoverTrigger as-child>
-                    <Button
-                      variant="outline"
-                      role="combobox"
-                      class="w-full justify-between"
-                      :class="{ 'text-muted-foreground': !item.productId }"
-                    >
-                      {{ getSelectedProductDisplay(index) }}
-                      <Search class="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent class="w-full p-0" side="bottom" align="start">
-                    <Command>
-                      <CommandInput placeholder="Rechercher un produit..." />
-                      <CommandList>
-                        <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
-                        <CommandItem
-                          v-for="product in filteredProducts.filter((p, idx) => 
+            <div v-for="(item, index) in restockItems" :key="index" class="border rounded-lg p-4 space-y-4 mt-1">
+              <div class="flex justify-between items-center">
+                <h4 class="font-medium">Produit {{ index + 1 }}</h4>
+                <Button
+                  v-if="restockItems.length > 1"
+                  variant="ghost"
+                  size="sm"
+                  @click="removeRestockItem(index)"
+                  class="text-destructive hover:text-destructive"
+                >
+                  <Trash2 class="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="space-y-2">
+                  <Label>Produit</Label>
+                  <Popover :open="openCommandIndex === index" @update:open="(open) => openCommandIndex = open ? index : null">
+                    <PopoverTrigger as-child>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        class="w-full justify-between"
+                        :class="{ 'text-muted-foreground': !item.productId }"
+                      >
+                        {{ getSelectedProductDisplay(index) }}
+                        <Search class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent class="w-full p-0" side="bottom" align="start">
+                      <Command>
+                        <CommandInput placeholder="Rechercher un produit..." />
+                        <CommandList>
+                          <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
+                          <CommandItem
+                            v-for="product in filteredProducts.filter((p, idx) =>
                             !restockItems.some((item, itemIdx) => 
                               itemIdx !== index && item.productId === p.id.toString()
                             )
                           )"
-                          :key="product.id"
-                          :value="`${product.name} ${product.code}`"
-                          @select="selectProductFromCommand(product, index)"
-                          class="cursor-pointer"
-                        >
-                          <div class="flex items-center space-x-3">
-                            <div v-if="product.image" class="h-8 w-8 rounded overflow-hidden">
-                              <img :src="buildLogoUrl(product.image)" :alt="product.name" class="h-full w-full object-cover" />
+                            :key="product.id"
+                            :value="`${product.name} ${product.code}`"
+                            @select="selectProductFromCommand(product, index)"
+                            class="cursor-pointer"
+                          >
+                            <div class="flex items-center space-x-3">
+                              <div v-if="product.image" class="h-8 w-8 rounded overflow-hidden">
+                                <img :src="buildLogoUrl(product.image)" :alt="product.name" class="h-full w-full object-cover" />
+                              </div>
+                              <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                                <Package class="h-4 w-4 text-primary" />
+                              </div>
+                              <div>
+                                <div class="font-medium">{{ product.name }}</div>
+                                <div class="text-sm text-muted-foreground">{{ product.code }}</div>
+                              </div>
                             </div>
-                            <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
-                              <Package class="h-4 w-4 text-primary" />
-                            </div>
-                            <div>
-                              <div class="font-medium">{{ product.name }}</div>
-                              <div class="text-sm text-muted-foreground">{{ product.code }}</div>
-                            </div>
-                          </div>
-                        </CommandItem>
-                      </CommandList>
-                    </Command>
-                  </PopoverContent>
-                </Popover>
-              </div>
-              
-              <div class="space-y-2">
-                <Label>Quantité</Label>
-                <Input 
-                  v-model="item.quantity" 
-                  type="text" 
-                  inputmode="numeric" 
-                  pattern="[0-9]*"
-                  placeholder="50"
-                  :data-quantity-index="index"
-                />
+                          </CommandItem>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                <div class="space-y-2">
+                  <Label>Quantité</Label>
+                  <Input
+                    v-model="item.quantity"
+                    type="text"
+                    inputmode="numeric"
+                    pattern="[0-9]*"
+                    placeholder="50"
+                    :data-quantity-index="index"
+                  />
+                </div>
               </div>
             </div>
+
+            <Button
+              variant="outline"
+              @click="addRestockItem"
+              class="w-full mt-1"
+              :disabled="restockItems.length >= filteredProducts.length"
+            >
+              <Plus class="mr-2 h-4 w-4" />
+              Ajouter un produit
+            </Button>
           </div>
-          
-          <Button 
-            variant="outline" 
-            @click="addRestockItem" 
-            class="w-full"
-            :disabled="restockItems.length >= filteredProducts.length"
-          >
-            <Plus class="mr-2 h-4 w-4" />
-            Ajouter un produit
-          </Button>
-          </div>
-          
+
           <!-- Note globale -->
           <div class="space-y-2 pt-4 border-t">
             <Label>Note pour tous les produits (optionnelle)</Label>
-            <Textarea 
-              v-model="globalNote" 
+            <Textarea
+              v-model="globalNote"
               placeholder="Livraison fournisseur, réassort urgent, etc."
               rows="3"
             />
           </div>
         </div>
-        
+
         <DialogFooter class="gap-2">
           <Button variant="outline" @click="showBulkRestockModal = false" :disabled="submitting">
             Annuler
@@ -626,7 +626,7 @@ onMounted(async () => {
             Êtes-vous sûr de vouloir supprimer ce restockage ?
           </DialogDescription>
         </DialogHeader>
-        
+
         <div v-if="restockToDelete" class="py-4">
           <div class="bg-muted/50 rounded-lg p-4">
             <div class="flex items-center space-x-3">
@@ -648,7 +648,7 @@ onMounted(async () => {
             </div>
           </div>
         </div>
-        
+
         <DialogFooter class="gap-2">
           <Button variant="outline" @click="cancelDelete" :disabled="deleting">
             Annuler
