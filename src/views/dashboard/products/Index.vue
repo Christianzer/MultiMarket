@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { VirtualProductList } from '@/components/ui/virtual-list'
-import { Plus, Edit, Trash2, Eye, Loader2, Package, Search, Grid, List, Upload, X, RefreshCw } from 'lucide-vue-next'
+import { Plus, Edit, Trash2, Eye, Loader2, Package, Search, Grid, List, Upload, X, RefreshCw, Minus } from 'lucide-vue-next'
 import { api } from '@/services/api'
 import type { Product, CreateProductRequest, UpdateProductRequest, CreateProductWithImageRequest, UpdateProductWithImageRequest } from '@/types/product'
 import { validateImageFile, createImagePreview, revokeImagePreview } from '@/utils/formData'
@@ -37,6 +37,7 @@ function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...
 
 // Modal states
 const showCreateModal = ref(false)
+const showBulkCreateModal = ref(false)
 const showEditModal = ref(false)
 const showDetailsModal = ref(false)
 const showDeleteModal = ref(false)
@@ -69,6 +70,31 @@ const imageError = ref<string>('')
 const fileInput = ref<HTMLInputElement | null>(null)
 const editFileInput = ref<HTMLInputElement | null>(null)
 const historyLoading = ref(false)
+
+// Bulk create state - Excel-like table
+interface BulkProduct {
+  code: string
+  name: string
+  price: string
+  stock?: string
+  note?: string
+  imageData?: string
+  imageFile?: File | null
+  imagePreview?: string
+}
+
+const bulkProducts = ref<BulkProduct[]>([...Array(5)].map(() => ({
+  code: '',
+  name: '',
+  price: '',
+  stock: '',
+  note: '',
+  imageData: '',
+  imageFile: null,
+  imagePreview: ''
+})))
+const bulkSubmitting = ref(false)
+const bulkError = ref('')
 
 const loadProducts = async (force = false) => {
   try {
@@ -226,6 +252,117 @@ const openCreateModal = () => {
   showCreateModal.value = true
 }
 
+const openBulkCreateModal = () => {
+  // Reset to 5 empty rows
+  bulkProducts.value = [...Array(5)].map(() => ({
+    code: '',
+    name: '',
+    price: '',
+    stock: '',
+    note: '',
+    imageData: '',
+    imageFile: null,
+    imagePreview: ''
+  }))
+  bulkError.value = ''
+  showBulkCreateModal.value = true
+}
+
+const addBulkRows = (count: number = 2) => {
+  for (let i = 0; i < count; i++) {
+    bulkProducts.value.push({
+      code: '',
+      name: '',
+      price: '',
+      stock: '',
+      note: '',
+      imageData: '',
+      imageFile: null,
+      imagePreview: ''
+    })
+  }
+}
+
+const clearBulkTable = () => {
+  bulkProducts.value.forEach(product => {
+    product.code = ''
+    product.name = ''
+    product.price = ''
+    product.stock = ''
+    product.note = ''
+    product.imageData = ''
+    product.imageFile = null
+    if (product.imagePreview) {
+      URL.revokeObjectURL(product.imagePreview)
+      product.imagePreview = ''
+    }
+  })
+  bulkError.value = ''
+}
+
+// Handle bulk image file selection
+const handleBulkImageSelect = async (event: Event, index: number) => {
+  const target = event.target as HTMLInputElement
+  const file = target.files?.[0]
+
+  if (!file) return
+
+  const product = bulkProducts.value[index]
+  
+  // Validate file
+  const validation = validateImageFile(file)
+  if (!validation.isValid) {
+    bulkError.value = `Ligne ${index + 1}: ${validation.error || 'Fichier image invalide'}`
+    return
+  }
+
+  try {
+    // Convert to base64
+    const base64Data = await fileToBase64(file)
+    
+    // Clean previous preview
+    if (product.imagePreview) {
+      URL.revokeObjectURL(product.imagePreview)
+    }
+
+    // Update product data
+    product.imageFile = file
+    product.imageData = base64Data
+    product.imagePreview = URL.createObjectURL(file)
+    
+    bulkError.value = ''
+  } catch (error) {
+    bulkError.value = `Ligne ${index + 1}: Erreur lors de la conversion de l'image`
+  }
+}
+
+// Convert file to base64
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result)
+      } else {
+        reject('Erreur de conversion')
+      }
+    }
+    reader.onerror = () => reject('Erreur de lecture du fichier')
+    reader.readAsDataURL(file)
+  })
+}
+
+// Remove bulk image
+const removeBulkImage = (index: number) => {
+  const product = bulkProducts.value[index]
+  if (product.imagePreview) {
+    URL.revokeObjectURL(product.imagePreview)
+  }
+  product.imageFile = null
+  product.imageData = ''
+  product.imagePreview = ''
+}
+
 const openEditModal = (product: Product) => {
   selectedProduct.value = product
   editForm.value = {
@@ -349,6 +486,68 @@ const getProductInitial = (name: string) => {
   return name.charAt(0).toUpperCase()
 }
 
+const bulkCreateProducts = async () => {
+  try {
+    bulkSubmitting.value = true
+    bulkError.value = ''
+
+    // Filter only products with at least code, name and price filled
+    const validProducts = []
+    let emptyRowCount = 0
+    
+    for (let i = 0; i < bulkProducts.value.length; i++) {
+      const product = bulkProducts.value[i]
+      
+      // Check if row is completely empty
+      if (!product.code.trim() && !product.name.trim() && !product.price.trim() && 
+          !product.stock?.trim() && !product.note?.trim() && !product.imageData?.trim() && !product.imageFile) {
+        emptyRowCount++
+        continue
+      }
+      
+      // Check if required fields are filled
+      if (!product.code.trim() || !product.name.trim() || !product.price.trim()) {
+        bulkError.value = `Ligne ${i + 1}: Code, nom et prix sont obligatoires`
+        return
+      }
+
+      const productToCreate: any = {
+        code: product.code.trim(),
+        name: product.name.trim(),
+        price: product.price.trim()
+      }
+
+      if (product.stock && product.stock.trim()) {
+        productToCreate.stock = parseInt(product.stock.trim()) || 0
+      }
+      if (product.note && product.note.trim()) {
+        productToCreate.note = product.note.trim()
+      }
+      if (product.imageData && product.imageData.trim()) {
+        productToCreate.imageData = product.imageData.trim()
+      }
+
+      validProducts.push(productToCreate)
+    }
+
+    if (validProducts.length === 0) {
+      bulkError.value = 'Aucun produit valide à créer. Remplissez au moins une ligne avec code, nom et prix.'
+      return
+    }
+
+    const bulkData = { products: validProducts }
+    const response = await api.products.bulkCreate(bulkData)
+
+    showBulkCreateModal.value = false
+    await loadProducts()
+  } catch (err: any) {
+    bulkError.value = err.message || 'Erreur lors de la création en lot des produits'
+    console.error('Erreur lors de la création en lot:', err)
+  } finally {
+    bulkSubmitting.value = false
+  }
+}
+
 const actualiser = async () => {
   try {
     historyLoading.value = true
@@ -396,10 +595,16 @@ onMounted(async () => {
           </span>
         </p>
       </div>
-      <Button @click="openCreateModal">
-        <Plus class="mr-2 h-4 w-4" />
-        Ajouter Produit
-      </Button>
+      <div class="flex space-x-2">
+        <Button @click="openCreateModal">
+          <Plus class="mr-2 h-4 w-4" />
+          Ajouter Produit
+        </Button>
+        <Button variant="outline" @click="openBulkCreateModal">
+          <Upload class="mr-2 h-4 w-4" />
+          Création en Lot
+        </Button>
+      </div>
     </div>
 
     <!-- Statistiques -->
@@ -872,6 +1077,206 @@ onMounted(async () => {
 
         <DialogFooter>
           <Button @click="showDetailsModal = false">Fermer</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Bulk Create Modal - Excel Style -->
+    <Dialog v-model:open="showBulkCreateModal">
+      <DialogContent class="sm:max-w-6xl max-h-[90vh] overflow-hidden" :disableOutsideClick="true">
+        <DialogHeader>
+          <DialogTitle>Création de Produits en Lot - Mode Tableur</DialogTitle>
+          <DialogDescription>
+            Saisissez vos produits dans le tableau ci-dessous. Seules les lignes avec code, nom et prix seront créées.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-4 flex-1 overflow-hidden flex flex-col">
+          <!-- Toolbar -->
+          <div class="flex justify-between items-center px-1">
+            <div class="flex items-center space-x-2">
+              <Button variant="outline" size="sm" @click="addBulkRows(2)">
+                <Plus class="h-4 w-4 mr-1" />
+                +2 lignes
+              </Button>
+              <Button variant="outline" size="sm" @click="clearBulkTable">
+                <X class="h-4 w-4 mr-1" />
+                Vider
+              </Button>
+            </div>
+            <div class="text-sm text-muted-foreground">
+              {{ bulkProducts.filter(p => p.code.trim() || p.name.trim() || p.price.trim()).length }} / {{ bulkProducts.length }} lignes remplies
+            </div>
+          </div>
+
+          <!-- Excel-like Table -->
+          <div class="flex-1 overflow-hidden border rounded-lg bg-white">
+            <div class="overflow-auto max-h-96">
+              <table class="w-full text-sm">
+                <thead class="sticky top-0 bg-muted/80 backdrop-blur">
+                  <tr class="border-b">
+                    <th class="w-8 px-2 py-3 text-center font-medium text-muted-foreground">#</th>
+                    <th class="px-3 py-3 text-left font-medium border-l min-w-[120px]">
+                      <div class="flex items-center">
+                        Code*
+                        <span class="text-xs text-destructive ml-1">*</span>
+                      </div>
+                    </th>
+                    <th class="px-3 py-3 text-left font-medium border-l min-w-[200px]">
+                      <div class="flex items-center">
+                        Nom du produit*
+                        <span class="text-xs text-destructive ml-1">*</span>
+                      </div>
+                    </th>
+                    <th class="px-3 py-3 text-left font-medium border-l min-w-[100px]">
+                      <div class="flex items-center">
+                        Prix (FCFA)*
+                        <span class="text-xs text-destructive ml-1">*</span>
+                      </div>
+                    </th>
+                    <th class="px-3 py-3 text-left font-medium border-l min-w-[80px]">
+                      Stock
+                    </th>
+                    <th class="px-3 py-3 text-left font-medium border-l min-w-[150px]">
+                      Note
+                    </th>
+                    <th class="px-3 py-3 text-left font-medium border-l min-w-[150px]">
+                      Image
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr 
+                    v-for="(product, index) in bulkProducts" 
+                    :key="index"
+                    class="border-b hover:bg-muted/30 group"
+                  >
+                    <td class="px-2 py-2 text-center text-muted-foreground font-mono text-xs">
+                      {{ index + 1 }}
+                    </td>
+                    <td class="px-1 py-2 border-l">
+                      <input 
+                        v-model="product.code" 
+                        type="text"
+                        placeholder="CODE001" 
+                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                        :class="{ 'ring-1 ring-destructive bg-destructive/5': !product.code.trim() && bulkError && (product.name.trim() || product.price.trim()) }"
+                      />
+                    </td>
+                    <td class="px-1 py-2 border-l">
+                      <input 
+                        v-model="product.name" 
+                        type="text"
+                        placeholder="Nom du produit" 
+                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                        :class="{ 'ring-1 ring-destructive bg-destructive/5': !product.name.trim() && bulkError && (product.code.trim() || product.price.trim()) }"
+                      />
+                    </td>
+                    <td class="px-1 py-2 border-l">
+                      <input 
+                        v-model="product.price" 
+                        type="text" 
+                        inputmode="numeric" 
+                        pattern="[0-9]*"
+                        placeholder="1500" 
+                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                        :class="{ 'ring-1 ring-destructive bg-destructive/5': !product.price.trim() && bulkError && (product.code.trim() || product.name.trim()) }"
+                      />
+                    </td>
+                    <td class="px-1 py-2 border-l">
+                      <input 
+                        v-model="product.stock" 
+                        type="text" 
+                        inputmode="numeric" 
+                        pattern="[0-9]*"
+                        placeholder="50" 
+                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                      />
+                    </td>
+                    <td class="px-1 py-2 border-l">
+                      <input 
+                        v-model="product.note" 
+                        type="text"
+                        placeholder="Note optionnelle" 
+                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                      />
+                    </td>
+                    <td class="px-1 py-2 border-l">
+                      <div class="flex flex-col space-y-1">
+                        <!-- Image preview or upload button -->
+                        <div v-if="product.imagePreview" class="relative">
+                          <img 
+                            :src="product.imagePreview" 
+                            alt="Preview" 
+                            class="w-12 h-12 object-cover rounded border cursor-pointer"
+                            @click="removeBulkImage(index)"
+                            title="Cliquer pour supprimer"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            @click="removeBulkImage(index)"
+                            class="absolute -top-1 -right-1 h-4 w-4 p-0 rounded-full"
+                          >
+                            <X class="h-3 w-3" />
+                          </Button>
+                        </div>
+                        <div v-else>
+                          <input 
+                            type="file"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            @change="handleBulkImageSelect($event, index)"
+                            class="hidden"
+                            :id="`bulk-image-${index}`"
+                          />
+                          <label 
+                            :for="`bulk-image-${index}`"
+                            class="cursor-pointer inline-flex items-center justify-center px-2 py-1 text-xs border rounded hover:bg-muted/50"
+                          >
+                            <Upload class="h-3 w-3 mr-1" />
+                            Image
+                          </label>
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Error message -->
+          <div v-if="bulkError" class="bg-destructive/10 border border-destructive/20 text-destructive p-3 rounded-lg">
+            <div class="flex items-start space-x-2">
+              <X class="h-4 w-4 mt-0.5 flex-shrink-0" />
+              <div class="text-sm">{{ bulkError }}</div>
+            </div>
+          </div>
+
+          <!-- Instructions -->
+          <div class="bg-muted/50 p-3 rounded-lg">
+            <div class="text-sm text-muted-foreground">
+              <strong>Instructions :</strong>
+              <ul class="list-disc list-inside mt-1 space-y-1">
+                <li>Les colonnes Code*, Nom* et Prix* sont obligatoires</li>
+                <li>Cliquez sur "+2 lignes" pour ajouter plus de lignes si nécessaire</li>
+                <li>Les lignes vides seront ignorées automatiquement</li>
+                <li>Le stock sera défini à 0 si non renseigné</li>
+                <li>L'image est optionnelle (cliquez sur "Image" pour sélectionner un fichier)</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter class="gap-2 mt-4">
+          <Button variant="outline" @click="showBulkCreateModal = false" :disabled="bulkSubmitting">
+            Annuler
+          </Button>
+          <Button @click="bulkCreateProducts" :disabled="bulkSubmitting">
+            <Loader2 v-if="bulkSubmitting" class="w-4 h-4 mr-2 animate-spin" />
+            Créer les produits
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
