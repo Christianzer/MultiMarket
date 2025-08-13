@@ -536,10 +536,12 @@ const bulkCreateProducts = async () => {
     }
 
     const bulkData = { products: validProducts }
-    const response = await api.products.bulkCreate(bulkData)
+    console.log(JSON.stringify(bulkData))
 
-    showBulkCreateModal.value = false
-    await loadProducts()
+    //const response = await api.products.bulkCreate(bulkData)
+
+    //showBulkCreateModal.value = false
+    //await loadProducts()
   } catch (err: any) {
     bulkError.value = err.message || 'Erreur lors de la création en lot des produits'
     console.error('Erreur lors de la création en lot:', err)
@@ -1083,7 +1085,7 @@ onMounted(async () => {
 
     <!-- Bulk Create Modal - Excel Style -->
     <Dialog v-model:open="showBulkCreateModal">
-      <DialogContent class="sm:max-w-6xl max-h-[90vh] overflow-hidden" :disableOutsideClick="true">
+      <DialogContent class="max-w-5xl max-h-[90vh] overflow-y-auto" :disableOutsideClick="true">
         <DialogHeader>
           <DialogTitle>Création de Produits en Lot - Mode Tableur</DialogTitle>
           <DialogDescription>
