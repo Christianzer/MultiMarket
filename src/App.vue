@@ -6,11 +6,12 @@ import { useAuthStore } from '@/stores/auth';
 import { ScrollArea, ScrollBar } from './components/ui/scroll-area';
 import { UpdateNotification, UpdateManager } from './components/ui/update-notification';
 import { Toast } from './components/ui/toast';
-import { toast } from 'sonner'
+import { useToast } from '@/composables/useToast'
 import { useTokenWatcher } from '@/services/tokenWatcher'
 
 const router = useRouter()
 const { startWatching, stopWatching } = useTokenWatcher()
+const { error: showError } = useToast()
 
 // Gestionnaire pour l'expiration du token JWT
 const handleTokenExpired = async (event: CustomEvent) => {
@@ -26,9 +27,8 @@ const handleTokenExpired = async (event: CustomEvent) => {
     authStore.clearAuth()
     
     // Afficher un toast d'information
-    toast.error(event.detail.message || 'Votre session a expiré. Veuillez vous reconnecter.', {
+    showError(event.detail.message || 'Votre session a expiré. Veuillez vous reconnecter.', {
       duration: 5000,
-      closeButton: true,
     })
     
     // Rediriger vers la page de connexion

@@ -13,9 +13,10 @@ import type { CartItem, Sale, ProductSearchResult } from '@/types/sale'
 import '@/types/electron'
 import { useAuthStore } from '@/stores/auth'
 import { buildLogoUrl } from '@/config/api'
-import { toast } from 'sonner'
+import { useToast } from '@/composables/useToast'
 
 const authStore = useAuthStore()
+const { error: showError, success: showSuccess, info: showInfo } = useToast()
 
 // État de la recherche et des produits
 const searchTerm = ref('')
@@ -219,7 +220,7 @@ const processSale = async () => {
 // Imprimer le reçu avec Electron ou fallback
 const printReceipt = async () => {
   if (!lastSale.value) {
-    toast.error('Aucune vente à imprimer')
+    showError('Aucune vente à imprimer')
     return
   }
 
@@ -236,9 +237,9 @@ const printReceipt = async () => {
       
       if (result.success) {
         if (result.printed) {
-          toast.success('Reçu imprimé avec succès ! 🖨️')
+          showSuccess('Reçu imprimé avec succès ! 🖨️')
         } else {
-          toast.info('Impression annulée par l\'utilisateur')
+          showInfo('Impression annulée par l\'utilisateur')
         }
       } else {
         throw new Error(result.message || 'Erreur d\'impression inconnue')
@@ -254,14 +255,14 @@ const printReceipt = async () => {
         printWindow.document.close()
         printWindow.print()
         printWindow.close()
-        toast.success('Fenêtre d\'impression ouverte')
+        showSuccess('Fenêtre d\'impression ouverte')
       } else {
         throw new Error('Impossible d\'ouvrir la fenêtre d\'impression')
       }
     }
   } catch (error) {
     console.error('Erreur lors de l\'impression:', error)
-    toast.error(error.message || 'Erreur lors de l\'impression du reçu')
+    showError(error.message || 'Erreur lors de l\'impression du reçu')
   } finally {
     printLoading.value = false
   }
