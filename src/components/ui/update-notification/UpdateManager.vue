@@ -59,13 +59,6 @@ onMounted(() => {
     setupUpdateListeners()
     startAutoCheck()
     checkCurrentVersion()
-    
-    // Test notification après 3 secondes (pour debug)
-    setTimeout(() => {
-      console.log('🧪 Testing notification display...')
-      updateState.value.message = '🧪 Test de notification - Auto-updater fonctionnel'
-      showNotification.value = true
-    }, 3000)
   } else {
     console.warn('Not in Electron environment, updater disabled')
   }

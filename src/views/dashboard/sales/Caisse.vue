@@ -13,6 +13,7 @@ import type { CartItem, Sale, ProductSearchResult } from '@/types/sale'
 import '@/types/electron'
 import { useAuthStore } from '@/stores/auth'
 import { buildLogoUrl } from '@/config/api'
+import { toast } from 'sonner'
 
 const authStore = useAuthStore()
 
@@ -33,6 +34,7 @@ const lastSale = ref<Sale | null>(null)
 
 // État de la vente
 const saleLoading = ref(false)
+const printLoading = ref(false)
 const saleError = ref('')
 
 // Gestion du montant client et de la monnaie
@@ -216,24 +218,52 @@ const processSale = async () => {
 
 // Imprimer le reçu avec Electron ou fallback
 const printReceipt = async () => {
-  if (!lastSale.value) return
+  if (!lastSale.value) {
+    toast.error('Aucune vente à imprimer')
+    return
+  }
 
-  // Vérifier si on est dans Electron
-  if (window.electronAPI && window.electronAPI.printReceipt) {
-    // Utiliser l'API Electron pour l'impression
-    const receiptContent = generateReceiptHTML(lastSale.value)
-    await window.electronAPI.printReceipt(receiptContent)
-  } else {
-    // Fallback pour le navigateur web
-    const receiptContent = generateReceiptHTML(lastSale.value)
-    const printWindow = window.open('', '_blank')
+  printLoading.value = true
+  
+  try {
+    // Vérifier si on est dans Electron
+    if (window.electronAPI && window.electronAPI.printReceipt) {
+      // Utiliser l'API Electron pour l'impression
+      console.log('🖨️ Démarrage impression via Electron...')
+      const receiptContent = generateReceiptHTML(lastSale.value)
+      
+      const result = await window.electronAPI.printReceipt(receiptContent)
+      
+      if (result.success) {
+        if (result.printed) {
+          toast.success('Reçu imprimé avec succès ! 🖨️')
+        } else {
+          toast.info('Impression annulée par l\'utilisateur')
+        }
+      } else {
+        throw new Error(result.message || 'Erreur d\'impression inconnue')
+      }
+    } else {
+      // Fallback pour le navigateur web
+      console.log('🖨️ Impression via navigateur (fallback)...')
+      const receiptContent = generateReceiptHTML(lastSale.value)
+      const printWindow = window.open('', '_blank')
 
-    if (printWindow) {
-      printWindow.document.write(receiptContent)
-      printWindow.document.close()
-      printWindow.print()
-      printWindow.close()
+      if (printWindow) {
+        printWindow.document.write(receiptContent)
+        printWindow.document.close()
+        printWindow.print()
+        printWindow.close()
+        toast.success('Fenêtre d\'impression ouverte')
+      } else {
+        throw new Error('Impossible d\'ouvrir la fenêtre d\'impression')
+      }
     }
+  } catch (error) {
+    console.error('Erreur lors de l\'impression:', error)
+    toast.error(error.message || 'Erreur lors de l\'impression du reçu')
+  } finally {
+    printLoading.value = false
   }
 }
 
@@ -836,9 +866,10 @@ onMounted(async () => {
         </div>
 
         <DialogFooter class="gap-2 flex-shrink-0 border-t bg-background">
-          <Button variant="outline" @click="printReceipt" v-if="lastSale">
-            <Printer class="h-4 w-4 mr-2" />
-            Imprimer reçu
+          <Button variant="outline" @click="printReceipt" v-if="lastSale" :disabled="printLoading">
+            <Loader2 v-if="printLoading" class="h-4 w-4 mr-2 animate-spin" />
+            <Printer v-else class="h-4 w-4 mr-2" />
+            {{ printLoading ? 'Impression...' : 'Imprimer reçu' }}
           </Button>
           <Button @click="showSuccessModal = false">
             Nouvelle Vente
@@ -858,12 +889,13 @@ onMounted(async () => {
         </DialogHeader>
 
         <DialogFooter class="gap-2">
-          <Button variant="outline" @click="showReceiptModal = false">
+          <Button variant="outline" @click="showReceiptModal = false" :disabled="printLoading">
             Annuler
           </Button>
-          <Button @click="printReceipt(); showReceiptModal = false">
-            <Printer class="h-4 w-4 mr-2" />
-            Imprimer
+          <Button @click="printReceipt(); showReceiptModal = false" :disabled="printLoading">
+            <Loader2 v-if="printLoading" class="h-4 w-4 mr-2 animate-spin" />
+            <Printer v-else class="h-4 w-4 mr-2" />
+            {{ printLoading ? 'Impression...' : 'Imprimer' }}
           </Button>
         </DialogFooter>
       </DialogContent>

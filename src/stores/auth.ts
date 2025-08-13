@@ -3,6 +3,7 @@ import type { AuthState, LoginRequest, User } from '@/types/auth'
 import { authService } from '@/services/auth'
 import { useAppStore } from './app'
 import { buildLogoUrl } from '@/config/api'
+import { tokenWatcher } from '@/services/tokenWatcher'
 
 const TOKEN_KEY = 'auth_token'
 const USER_KEY = 'auth_user'
@@ -39,6 +40,9 @@ export const useAuthStore = defineStore('auth', {
         // Appliquer le thème personnalisé si disponible
         this.applyCustomBranding()
 
+        // Démarrer la surveillance du token
+        tokenWatcher.startWatching()
+
         return response
       } catch (error) {
         this.clearAuth()
@@ -54,6 +58,8 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.clearAuth()
         this.resetBranding()
+        // Arrêter la surveillance du token
+        tokenWatcher.stopWatching()
       }
     },
 
@@ -65,6 +71,8 @@ export const useAuthStore = defineStore('auth', {
           if (isValid) {
             this.isAuthenticated = true
             this.applyCustomBranding()
+            // Démarrer la surveillance du token pour les sessions existantes
+            tokenWatcher.startWatching()
           } else {
             this.clearAuth()
           }
@@ -80,6 +88,8 @@ export const useAuthStore = defineStore('auth', {
       this.isAuthenticated = false
       localStorage.removeItem(TOKEN_KEY)
       localStorage.removeItem(USER_KEY)
+      // Arrêter la surveillance du token lors du nettoyage
+      tokenWatcher.stopWatching()
     },
 
     applyCustomBranding() {
@@ -103,6 +113,13 @@ export const useAuthStore = defineStore('auth', {
       this.user = user
       localStorage.setItem(USER_KEY, JSON.stringify(user))
       this.applyCustomBranding()
+    },
+
+    // Déconnexion forcée en cas d'expiration de token
+    forceLogout(reason: string = 'Token expiré') {
+      console.warn(`🔒 Déconnexion forcée: ${reason}`)
+      this.clearAuth()
+      this.resetBranding()
     }
   }
 })

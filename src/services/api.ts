@@ -11,6 +11,20 @@ class ApiService {
     return token ? { 'Authorization': `Bearer ${token}` } : {}
   }
 
+  private handleAuthError(status: number): void {
+    if (status === 401 || status === 403) {
+      console.warn('🔒 Token JWT expiré ou invalide - Déconnexion automatique')
+      
+      // Émettre un événement global pour signaler l'expiration du token
+      window.dispatchEvent(new CustomEvent('auth-token-expired', {
+        detail: { 
+          status,
+          message: 'Votre session a expiré. Veuillez vous reconnecter.' 
+        }
+      }))
+    }
+  }
+
   async request<T>(
     endpoint: string, 
     options: RequestInit = {}
@@ -32,6 +46,9 @@ class ApiService {
       const response = await fetch(url, config)
 
       if (!response.ok) {
+        // Gérer l'expiration du token JWT
+        this.handleAuthError(response.status)
+        
         const errorData = await response.json().catch(() => ({}))
         const error: ApiError = {
           message: errorData.message || `HTTP ${response.status}: ${response.statusText}`,
