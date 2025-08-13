@@ -129,74 +129,122 @@ function setupAutoUpdater() {
   autoUpdater.on('checking-for-update', () => {
     console.log('Checking for update...')
     // Notify renderer process
-    win?.webContents.send('updater-message', 'Vérification des mises à jour...')
+    win?.webContents.send('updater-message', '🔍 Recherche de nouvelles versions en cours...')
   })
 
   autoUpdater.on('update-available', (info) => {
     console.log('Update available:', info)
-    win?.webContents.send('updater-message', 'Une mise à jour est disponible, téléchargement en cours...')
+    const version = info.version ? ` (v${info.version})` : ''
+    win?.webContents.send('updater-message', `📥 Nouvelle version disponible${version} - Téléchargement automatique démarré...`)
     // Téléchargement automatique déjà activé
   })
 
   autoUpdater.on('update-not-available', (info) => {
     console.log('Update not available:', info)
-    win?.webContents.send('updater-message', 'Aucune mise à jour disponible')
+    const currentVersion = info.version ? ` (v${info.version})` : ''
+    win?.webContents.send('updater-message', `✅ Vous avez déjà la dernière version${currentVersion}`)
   })
 
   autoUpdater.on('error', (err) => {
     console.log('Error in auto-updater:', err)
     // Don't crash the app on updater errors, just log them
-    win?.webContents.send('updater-error', `Erreur de mise à jour: ${err.message}`)
+    let errorMessage = '❌ Erreur lors de la vérification des mises à jour'
+    
+    // Messages d'erreur plus spécifiques selon le type d'erreur
+    if (err.message.includes('net::ERR_INTERNET_DISCONNECTED')) {
+      errorMessage = '🌐 Pas de connexion internet - Impossible de vérifier les mises à jour'
+    } else if (err.message.includes('net::ERR_NAME_NOT_RESOLVED')) {
+      errorMessage = '🌐 Problème de réseau - Serveur de mise à jour non accessible'
+    } else if (err.message.includes('ENOTFOUND')) {
+      errorMessage = '🔍 Serveur de mise à jour introuvable - Vérifiez votre connexion'
+    } else if (err.message.includes('timeout')) {
+      errorMessage = '⏱️ Délai d\'attente dépassé - Tentative de reconnexion automatique'
+    } else if (err.message.includes('404')) {
+      errorMessage = '📂 Fichier de mise à jour non trouvé sur le serveur'
+    } else {
+      errorMessage = `❌ Erreur de mise à jour: ${err.message}`
+    }
+    
+    win?.webContents.send('updater-error', errorMessage)
   })
 
   autoUpdater.on('download-progress', (progressObj) => {
-    let log_message = `Vitesse: ${Math.round(progressObj.bytesPerSecond / 1024)} KB/s`
-    log_message += ` - Téléchargé ${Math.round(progressObj.percent)}%`
-    log_message += ` (${Math.round(progressObj.transferred / 1024 / 1024)} MB / ${Math.round(progressObj.total / 1024 / 1024)} MB)`
+    const speedKB = Math.round(progressObj.bytesPerSecond / 1024)
+    const transferredMB = Math.round(progressObj.transferred / 1024 / 1024)
+    const totalMB = Math.round(progressObj.total / 1024 / 1024)
+    const percent = Math.round(progressObj.percent)
+    
+    let log_message = `📥 Téléchargement: ${percent}% (${transferredMB}/${totalMB} MB) - ${speedKB} KB/s`
     console.log(log_message)
 
-    // Notify renderer process of download progress
+    // Notify renderer process of download progress with enhanced data
     win?.webContents.send('updater-progress', {
-      percent: Math.round(progressObj.percent),
-      transferred: Math.round(progressObj.transferred / 1024 / 1024),
-      total: Math.round(progressObj.total / 1024 / 1024),
-      speed: Math.round(progressObj.bytesPerSecond / 1024)
+      percent: percent,
+      transferred: transferredMB,
+      total: totalMB,
+      speed: speedKB,
+      message: `📥 Téléchargement en cours: ${percent}%`
     })
   })
 
   autoUpdater.on('update-downloaded', (info) => {
     console.log('Update downloaded:', info)
-    win?.webContents.send('updater-message', 'Mise à jour téléchargée. L\'application va redémarrer automatiquement dans quelques secondes...')
+    const version = info.version ? ` v${info.version}` : ''
+    win?.webContents.send('updater-message', `🎉 Mise à jour${version} téléchargée avec succès ! L'application va redémarrer dans 5 secondes pour finaliser l'installation...`)
 
     // Give user a few seconds to see the message before restarting
-    setTimeout(() => {
-      autoUpdater.quitAndInstall()
-    }, 5000)
+    let countdown = 5
+    const countdownInterval = setInterval(() => {
+      countdown--
+      if (countdown > 0) {
+        win?.webContents.send('updater-message', `🎉 Mise à jour${version} prête ! Redémarrage dans ${countdown} seconde${countdown > 1 ? 's' : ''}...`)
+      } else {
+        clearInterval(countdownInterval)
+        autoUpdater.quitAndInstall()
+      }
+    }, 1000)
   })
 
   // Check for updates with error handling and retry logic
   const checkForUpdatesWithRetry = async (retryCount = 3) => {
     for (let i = 0; i < retryCount; i++) {
       try {
-        console.log(`Tentative ${i + 1}/${retryCount} de vérification des mises à jour`)
+        console.log(`🔄 Tentative ${i + 1}/${retryCount} de vérification des mises à jour`)
+        if (i > 0) {
+          win?.webContents.send('updater-message', `🔄 Nouvelle tentative de vérification (${i + 1}/${retryCount})...`)
+        }
         await autoUpdater.checkForUpdates()
         break // Succès, sortir de la boucle
       } catch (err: any) {
-        console.log(`Échec tentative ${i + 1}:`, err.message)
+        console.log(`❌ Échec tentative ${i + 1}:`, err.message)
         if (i === retryCount - 1) {
           // Dernière tentative échouée
-          win?.webContents.send('updater-error', `Impossible de vérifier les mises à jour: ${err.message}`)
+          let errorMessage = '❌ Impossible de vérifier les mises à jour après plusieurs tentatives'
+          
+          // Messages d'erreur spécifiques selon le contexte
+          if (err.message.includes('net::ERR_INTERNET_DISCONNECTED')) {
+            errorMessage = '🌐 Vérifiez votre connexion internet et réessayez plus tard'
+          } else if (err.message.includes('timeout')) {
+            errorMessage = '⏱️ Délai d\'attente dépassé - Le serveur semble surchargé'
+          } else {
+            errorMessage = `❌ Erreur persistante: ${err.message}`
+          }
+          
+          win?.webContents.send('updater-error', errorMessage)
         } else {
           // Attendre avant la prochaine tentative (délai progressif)
-          await new Promise(resolve => setTimeout(resolve, (i + 1) * 2000))
+          const waitTime = (i + 1) * 2000
+          win?.webContents.send('updater-message', `⏳ Nouvelle tentative dans ${(waitTime / 1000)} secondes...`)
+          await new Promise(resolve => setTimeout(resolve, waitTime))
         }
       }
     }
   }
 
   setTimeout(() => {
+    console.log('🚀 Starting automatic update check...')
     checkForUpdatesWithRetry()
-  }, 5000) // Wait 5 seconds after app start
+  }, 2000) // Wait 2 seconds after app start (réduire le délai pour test)
 
   // Vérification périodique des mises à jour (toutes les heures)
   setInterval(() => {

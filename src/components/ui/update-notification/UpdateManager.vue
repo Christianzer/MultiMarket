@@ -53,10 +53,21 @@ let progressUnsubscribe: (() => void) | null = null
 let autoCheckTimer: NodeJS.Timeout | null = null
 
 onMounted(() => {
+  console.log('UpdateManager mounted, isElectron:', isElectron)
   if (isElectron) {
+    console.log('Setting up updater listeners...')
     setupUpdateListeners()
     startAutoCheck()
     checkCurrentVersion()
+    
+    // Test notification après 3 secondes (pour debug)
+    setTimeout(() => {
+      console.log('🧪 Testing notification display...')
+      updateState.value.message = '🧪 Test de notification - Auto-updater fonctionnel'
+      showNotification.value = true
+    }, 3000)
+  } else {
+    console.warn('Not in Electron environment, updater disabled')
   }
 })
 
@@ -65,35 +76,53 @@ onUnmounted(() => {
 })
 
 function setupUpdateListeners() {
-  if (!service.available) return
+  console.log('setupUpdateListeners called, service available:', service.available)
+  if (!service.available) {
+    console.warn('Electron service not available')
+    return
+  }
 
   // Écouter les messages de mise à jour
   messageUnsubscribe = service.onUpdaterMessage((message: string) => {
+    console.log('📥 Updater message received:', message)
     updateState.value.message = message
     
-    if (message.includes('disponible')) {
+    // Détecter les différents états selon les nouveaux messages
+    if (message.includes('disponible') || message.includes('📥 Nouvelle version')) {
+      console.log('✅ Update available detected')
       updateState.value.available = true
       showNotification.value = true
-    } else if (message.includes('téléchargée')) {
+    } else if (message.includes('téléchargée') || message.includes('🎉 Mise à jour')) {
+      console.log('✅ Update downloaded detected')
       updateState.value.downloaded = true
       updateState.value.downloading = false
       showNotification.value = true
-    } else if (message.includes('Vérification')) {
+    } else if (message.includes('🔍 Recherche') || message.includes('Vérification')) {
+      console.log('🔍 Update check in progress')
       // Vérification en cours
+    } else if (message.includes('✅ Vous avez déjà')) {
+      console.log('ℹ️ No update available')
+      // Pas de mise à jour disponible
+      updateState.value.available = false
+      updateState.value.downloading = false
     }
   })
 
   // Écouter les erreurs
   errorUnsubscribe = service.onUpdaterError((error: string) => {
+    console.log('❌ Updater error received:', error)
     updateState.value.error = error
     updateState.value.downloading = false
+    showNotification.value = true
     console.error('Update error:', error)
   })
 
   // Écouter le progrès
   progressUnsubscribe = service.onUpdaterProgress((progress: UpdateProgress) => {
+    console.log('📊 Updater progress received:', progress)
     updateState.value.progress = progress
     updateState.value.downloading = true
+    showNotification.value = true
   })
 }
 
@@ -127,7 +156,7 @@ async function checkForUpdates(showProgress = true) {
 
   try {
     if (showProgress) {
-      updateState.value.message = 'Vérification des mises à jour...'
+      updateState.value.message = '🔍 Recherche de nouvelles versions en cours...'
     }
     
     const result = await service.checkForUpdates()
@@ -138,7 +167,7 @@ async function checkForUpdates(showProgress = true) {
     }
   } catch (error) {
     console.error('Erreur vérification mise à jour:', error)
-    updateState.value.error = 'Impossible de vérifier les mises à jour'
+    updateState.value.error = '❌ Impossible de vérifier les mises à jour - Vérifiez votre connexion internet'
   }
 }
 
@@ -158,7 +187,7 @@ async function installUpdate() {
     await service.quitAndInstall()
   } catch (error) {
     console.error('Erreur installation:', error)
-    updateState.value.error = 'Erreur lors de l\'installation'
+    updateState.value.error = '❌ Erreur lors de l\'installation - Réessayez ou redémarrez manuellement'
   }
 }
 
@@ -169,6 +198,7 @@ async function restartApp() {
     await service.restartApp()
   } catch (error) {
     console.error('Erreur redémarrage:', error)
+    updateState.value.error = '❌ Impossible de redémarrer automatiquement - Fermez et relancez l\'application manuellement'
   }
 }
 
@@ -229,10 +259,10 @@ function formatSpeed(bytesPerSecond: number): string {
               <Download v-if="updateState.available && !updateState.downloaded" class="h-4 w-4 text-blue-500" />
               <CheckCircle v-else-if="updateState.downloaded" class="h-4 w-4 text-green-500" />
               <AlertCircle v-else-if="updateState.error" class="h-4 w-4 text-red-500" />
-              <CardTitle class="text-sm">
-                <span v-if="updateState.available && !updateState.downloaded">Mise à jour disponible</span>
-                <span v-else-if="updateState.downloaded">Mise à jour prête</span>
-                <span v-else-if="updateState.error">Erreur de mise à jour</span>
+              <CardTitle class="text-sm font-medium">
+                <span v-if="updateState.available && !updateState.downloaded">🆕 Nouvelle version disponible</span>
+                <span v-else-if="updateState.downloaded">✅ Mise à jour prête à installer</span>
+                <span v-else-if="updateState.error">⚠️ Problème de mise à jour</span>
               </CardTitle>
             </div>
             <Button variant="ghost" size="sm" @click="dismissNotification">
@@ -241,7 +271,7 @@ function formatSpeed(bytesPerSecond: number): string {
           </div>
         </CardHeader>
         <CardContent class="pt-0">
-          <CardDescription class="text-xs mb-2">
+          <CardDescription class="text-xs mb-2 leading-relaxed">
             {{ updateState.message || updateState.error }}
           </CardDescription>
           
@@ -259,9 +289,9 @@ function formatSpeed(bytesPerSecond: number): string {
               v-if="updateState.downloaded" 
               size="sm" 
               @click="installUpdate"
-              class="flex-1"
+              class="flex-1 bg-green-600 hover:bg-green-700"
             >
-              Installer
+              🚀 Installer maintenant
             </Button>
             <Button 
               v-else-if="updateState.available" 
@@ -270,7 +300,7 @@ function formatSpeed(bytesPerSecond: number): string {
               @click="showUpdateDetails"
               class="flex-1"
             >
-              Détails
+              📋 Voir les détails
             </Button>
             <Button 
               v-if="updateState.error" 
@@ -279,7 +309,7 @@ function formatSpeed(bytesPerSecond: number): string {
               @click="checkForUpdates(true)"
               class="flex-1"
             >
-              Réessayer
+              🔄 Réessayer
             </Button>
           </div>
         </CardContent>

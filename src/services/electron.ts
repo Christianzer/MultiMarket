@@ -201,28 +201,37 @@ class ElectronService {
   onUpdaterMessage(callback: (message: string) => void): () => void {
     if (!this.available || !this.api!.onUpdaterMessage) return () => {}
     
-    this.api!.onUpdaterMessage(callback)
+    const cleanup = this.api!.onUpdaterMessage(callback)
     this.addListener('updater-message', callback)
     
-    return () => this.removeListener('updater-message', callback)
+    return () => {
+      cleanup() // Nettoyer l'event listener Electron
+      this.removeListener('updater-message', callback) // Nettoyer notre tracking local
+    }
   }
 
   onUpdaterError(callback: (error: string) => void): () => void {
     if (!this.available || !this.api!.onUpdaterError) return () => {}
     
-    this.api!.onUpdaterError(callback)
+    const cleanup = this.api!.onUpdaterError(callback)
     this.addListener('updater-error', callback)
     
-    return () => this.removeListener('updater-error', callback)
+    return () => {
+      cleanup() // Nettoyer l'event listener Electron
+      this.removeListener('updater-error', callback) // Nettoyer notre tracking local
+    }
   }
 
   onUpdaterProgress(callback: (progress: any) => void): () => void {
     if (!this.available || !this.api!.onUpdaterProgress) return () => {}
     
-    this.api!.onUpdaterProgress(callback)
+    const cleanup = this.api!.onUpdaterProgress(callback)
     this.addListener('updater-progress', callback)
     
-    return () => this.removeListener('updater-progress', callback)
+    return () => {
+      cleanup() // Nettoyer l'event listener Electron
+      this.removeListener('updater-progress', callback) // Nettoyer notre tracking local
+    }
   }
 
   private addListener(event: string, callback: Function) {

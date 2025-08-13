@@ -157,33 +157,51 @@ class SecureElectronAPI {
     if (typeof callback !== 'function') {
       throw new Error('Callback must be a function')
     }
-    this.on('updater-message', (_, message) => {
+    const listener = (_, message) => {
       if (typeof message === 'string') {
         callback(message)
       }
-    })
+    }
+    this.on('updater-message', listener)
+    
+    // Retourner une fonction de nettoyage
+    return () => {
+      this.off('updater-message', listener)
+    }
   }
 
   onUpdaterError(callback: (error: string) => void) {
     if (typeof callback !== 'function') {
       throw new Error('Callback must be a function')
     }
-    this.on('updater-error', (_, error) => {
+    const listener = (_, error) => {
       if (typeof error === 'string') {
         callback(error)
       }
-    })
+    }
+    this.on('updater-error', listener)
+    
+    // Retourner une fonction de nettoyage
+    return () => {
+      this.off('updater-error', listener)
+    }
   }
 
   onUpdaterProgress(callback: (progress: any) => void) {
     if (typeof callback !== 'function') {
       throw new Error('Callback must be a function')
     }
-    this.on('updater-progress', (_, progress) => {
+    const listener = (_, progress) => {
       if (progress && typeof progress === 'object') {
         callback(progress)
       }
-    })
+    }
+    this.on('updater-progress', listener)
+    
+    // Retourner une fonction de nettoyage
+    return () => {
+      this.off('updater-progress', listener)
+    }
   }
 
   // Méthodes utilitaires
