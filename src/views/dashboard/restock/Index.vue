@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -31,12 +31,18 @@ const restockItems = ref<RestockFormItem[]>([
   { productId: '', quantity: '' }
 ])
 const globalNote = ref('')
+const quickInputMode = ref(false)
+const quickInputText = ref('')
 
 const showBulkRestockModal = ref(false)
 const showDeleteModal = ref(false)
 const restockToDelete = ref<Restock | null>(null)
 const deleting = ref(false)
 const searchQuery = ref('')
+
+// Auto-complétion
+const productSearchQuery = ref<{ [key: number]: string }>({})
+const showSuggestions = ref<{ [key: number]: boolean }>({})
 
 // Produits filtrés pour le supermarché de l'admin
 const filteredProducts = computed(() => {
@@ -74,12 +80,32 @@ const loadRestockHistory = async () => {
 }
 
 const addRestockItem = () => {
+  const newIndex = restockItems.value.length
   restockItems.value.push({ productId: '', quantity: '' })
+  productSearchQuery.value[newIndex] = ''
+  showSuggestions.value[newIndex] = false
 }
 
 const removeRestockItem = (index: number) => {
   if (restockItems.value.length > 1) {
     restockItems.value.splice(index, 1)
+    // Réorganiser les index des queries de recherche
+    const newProductSearchQuery: { [key: number]: string } = {}
+    const newShowSuggestions: { [key: number]: boolean } = {}
+    
+    Object.keys(productSearchQuery.value).forEach(key => {
+      const keyIndex = parseInt(key)
+      if (keyIndex < index) {
+        newProductSearchQuery[keyIndex] = productSearchQuery.value[keyIndex]
+        newShowSuggestions[keyIndex] = showSuggestions.value[keyIndex]
+      } else if (keyIndex > index) {
+        newProductSearchQuery[keyIndex - 1] = productSearchQuery.value[keyIndex]
+        newShowSuggestions[keyIndex - 1] = showSuggestions.value[keyIndex]
+      }
+    })
+    
+    productSearchQuery.value = newProductSearchQuery
+    showSuggestions.value = newShowSuggestions
   }
 }
 
@@ -138,8 +164,58 @@ const performBulkRestock = async () => {
 const openBulkRestockModal = () => {
   restockItems.value = [{ productId: '', quantity: '' }]
   globalNote.value = ''
+  quickInputMode.value = false
+  quickInputText.value = ''
+  productSearchQuery.value = {}
+  showSuggestions.value = {}
   error.value = ''
   showBulkRestockModal.value = true
+}
+
+const toggleQuickInputMode = () => {
+  quickInputMode.value = !quickInputMode.value
+  if (quickInputMode.value) {
+    // Convertir les items existants en texte rapide
+    quickInputText.value = restockItems.value
+      .filter(item => item.productId && item.quantity)
+      .map(item => {
+        const product = filteredProducts.value.find(p => p.id.toString() === item.productId)
+        return `${product?.code || item.productId}:${item.quantity}`
+      })
+      .join('\n')
+  } else {
+    // Convertir le texte rapide en items
+    parseQuickInput()
+  }
+}
+
+const parseQuickInput = () => {
+  if (!quickInputText.value.trim()) {
+    restockItems.value = [{ productId: '', quantity: '' }]
+    return
+  }
+
+  const lines = quickInputText.value.split('\n').filter(line => line.trim())
+  const newItems: typeof restockItems.value = []
+
+  for (const line of lines) {
+    const match = line.trim().match(/^(.+?):(\d+)$/)
+    if (match) {
+      const [, codeOrName, quantity] = match
+      const product = filteredProducts.value.find(p => 
+        p.code.toLowerCase() === codeOrName.toLowerCase() ||
+        p.name.toLowerCase().includes(codeOrName.toLowerCase())
+      )
+      if (product) {
+        newItems.push({
+          productId: product.id.toString(),
+          quantity: quantity
+        })
+      }
+    }
+  }
+
+  restockItems.value = newItems.length > 0 ? newItems : [{ productId: '', quantity: '' }]
 }
 
 const formatDate = (dateString: string) => {
@@ -200,6 +276,65 @@ const confirmDelete = async () => {
 const cancelDelete = () => {
   showDeleteModal.value = false
   restockToDelete.value = null
+}
+
+// Auto-complétion intelligente
+const searchProducts = (query: string, index: number) => {
+  if (!query || query.length < 2) {
+    showSuggestions.value[index] = false
+    return []
+  }
+  
+  const lowerQuery = query.toLowerCase()
+  return filteredProducts.value
+    .filter(product => 
+      product.name.toLowerCase().includes(lowerQuery) ||
+      product.code.toLowerCase().includes(lowerQuery)
+    )
+    .slice(0, 5) // Limiter à 5 suggestions
+}
+
+const selectProduct = (product: any, index: number) => {
+  restockItems.value[index].productId = product.id.toString()
+  productSearchQuery.value[index] = `${product.name} (${product.code})`
+  showSuggestions.value[index] = false
+  
+  // Focus sur la quantité
+  nextTick(() => {
+    const quantityInput = document.querySelector(`[data-quantity-index="${index}"]`) as HTMLInputElement
+    if (quantityInput) {
+      quantityInput.focus()
+    }
+  })
+}
+
+const getSuggestions = (index: number) => {
+  const query = productSearchQuery.value[index] || ''
+  return searchProducts(query, index)
+}
+
+const handleProductInput = (query: string, index: number) => {
+  productSearchQuery.value[index] = query
+  showSuggestions.value[index] = query.length >= 2
+  
+  // Reset product selection si on tape quelque chose de différent
+  const exactMatch = filteredProducts.value.find(p => 
+    `${p.name} (${p.code})` === query
+  )
+  if (!exactMatch) {
+    restockItems.value[index].productId = ''
+  }
+}
+
+const handleProductKeydown = (event: KeyboardEvent, index: number) => {
+  const suggestions = getSuggestions(index)
+  if (event.key === 'ArrowDown' && suggestions.length > 0) {
+    event.preventDefault()
+    selectProduct(suggestions[0], index)
+  } else if (event.key === 'Enter' && suggestions.length > 0) {
+    event.preventDefault()
+    selectProduct(suggestions[0], index)
+  }
 }
 
 onMounted(async () => {
@@ -387,10 +522,41 @@ onMounted(async () => {
           <DialogDescription>
             Ajouter du stock à plusieurs produits en une seule opération
           </DialogDescription>
+          <div class="flex justify-end mt-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              @click="toggleQuickInputMode"
+              class="text-xs"
+            >
+              {{ quickInputMode ? 'Mode Normal' : 'Saisie Rapide' }}
+            </Button>
+          </div>
         </DialogHeader>
         
         <div class="space-y-4 py-4">
-          <div v-for="(item, index) in restockItems" :key="index" class="border rounded-lg p-4 space-y-4">
+          <!-- Mode saisie rapide -->
+          <div v-if="quickInputMode" class="space-y-4">
+            <div class="space-y-2">
+              <Label>Saisie Rapide</Label>
+              <div class="text-sm text-muted-foreground mb-2">
+                Format: <code>CODE:QUANTITE</code> (une ligne par produit)
+                <br>
+                Exemple: <code>COCA500:24</code> ou <code>Coca Cola:12</code>
+              </div>
+              <Textarea
+                v-model="quickInputText"
+                placeholder="COCA500:24&#10;PEPSI330:36&#10;EAU1L:48"
+                rows="8"
+                class="font-mono text-sm"
+                @blur="parseQuickInput"
+              />
+            </div>
+          </div>
+
+          <!-- Mode normal -->
+          <div v-else>
+            <div v-for="(item, index) in restockItems" :key="index" class="border rounded-lg p-4 space-y-4">
             <div class="flex justify-between items-center">
               <h4 class="font-medium">Produit {{ index + 1 }}</h4>
               <Button 
@@ -405,23 +571,38 @@ onMounted(async () => {
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-2">
+              <div class="space-y-2 relative">
                 <Label>Produit</Label>
-                <Select v-model="item.productId">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un produit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem 
-                      v-for="product in filteredProducts" 
-                      :key="product.id" 
-                      :value="product.id.toString()"
-                      :disabled="restockItems.some((i, idx) => idx !== index && i.productId === product.id.toString())"
-                    >
-                      {{ product.name }} ({{ product.code }})
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <Input
+                  :value="productSearchQuery[index] || ''"
+                  @input="(e) => handleProductInput(e.target.value, index)"
+                  @keydown="(e) => handleProductKeydown(e, index)"
+                  @focus="showSuggestions[index] = productSearchQuery[index]?.length >= 2"
+                  @blur="() => setTimeout(() => showSuggestions[index] = false, 150)"
+                  placeholder="Tapez le nom ou code du produit..."
+                  class="w-full"
+                  autocomplete="off"
+                />
+                
+                <!-- Suggestions dropdown -->
+                <div 
+                  v-if="showSuggestions[index] && getSuggestions(index).length > 0"
+                  class="absolute z-50 w-full bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto"
+                  style="top: 100%;"
+                >
+                  <div
+                    v-for="suggestion in getSuggestions(index)"
+                    :key="suggestion.id"
+                    @click="selectProduct(suggestion, index)"
+                    class="px-3 py-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
+                    :class="{
+                      'opacity-50': restockItems.some((i, idx) => idx !== index && i.productId === suggestion.id.toString())
+                    }"
+                  >
+                    <div class="font-medium text-sm">{{ suggestion.name }}</div>
+                    <div class="text-xs text-muted-foreground">{{ suggestion.code }}</div>
+                  </div>
+                </div>
               </div>
               
               <div class="space-y-2">
@@ -431,7 +612,8 @@ onMounted(async () => {
                   type="text" 
                   inputmode="numeric" 
                   pattern="[0-9]*"
-                  placeholder="50" 
+                  placeholder="50"
+                  :data-quantity-index="index"
                 />
               </div>
             </div>
@@ -446,6 +628,7 @@ onMounted(async () => {
             <Plus class="mr-2 h-4 w-4" />
             Ajouter un produit
           </Button>
+          </div>
           
           <!-- Note globale -->
           <div class="space-y-2 pt-4 border-t">
