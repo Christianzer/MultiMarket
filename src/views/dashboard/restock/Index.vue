@@ -8,6 +8,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, Minus, Package, History, Loader2, Trash2, RefreshCw, Search } from 'lucide-vue-next'
@@ -40,9 +42,8 @@ const restockToDelete = ref<Restock | null>(null)
 const deleting = ref(false)
 const searchQuery = ref('')
 
-// Auto-complétion
-const productSearchQuery = ref<{ [key: number]: string }>({})
-const showSuggestions = ref<{ [key: number]: boolean }>({})
+// Auto-complétion Command
+const openCommandIndex = ref<number | null>(null)
 
 // Produits filtrés pour le supermarché de l'admin
 const filteredProducts = computed(() => {
@@ -80,32 +81,17 @@ const loadRestockHistory = async () => {
 }
 
 const addRestockItem = () => {
-  const newIndex = restockItems.value.length
   restockItems.value.push({ productId: '', quantity: '' })
-  productSearchQuery.value[newIndex] = ''
-  showSuggestions.value[newIndex] = false
 }
 
 const removeRestockItem = (index: number) => {
   if (restockItems.value.length > 1) {
     restockItems.value.splice(index, 1)
-    // Réorganiser les index des queries de recherche
-    const newProductSearchQuery: { [key: number]: string } = {}
-    const newShowSuggestions: { [key: number]: boolean } = {}
-    
-    Object.keys(productSearchQuery.value).forEach(key => {
-      const keyIndex = parseInt(key)
-      if (keyIndex < index) {
-        newProductSearchQuery[keyIndex] = productSearchQuery.value[keyIndex]
-        newShowSuggestions[keyIndex] = showSuggestions.value[keyIndex]
-      } else if (keyIndex > index) {
-        newProductSearchQuery[keyIndex - 1] = productSearchQuery.value[keyIndex]
-        newShowSuggestions[keyIndex - 1] = showSuggestions.value[keyIndex]
-      }
-    })
-    
-    productSearchQuery.value = newProductSearchQuery
-    showSuggestions.value = newShowSuggestions
+    if (openCommandIndex.value === index) {
+      openCommandIndex.value = null
+    } else if (openCommandIndex.value && openCommandIndex.value > index) {
+      openCommandIndex.value--
+    }
   }
 }
 
@@ -166,8 +152,7 @@ const openBulkRestockModal = () => {
   globalNote.value = ''
   quickInputMode.value = false
   quickInputText.value = ''
-  productSearchQuery.value = {}
-  showSuggestions.value = {}
+  openCommandIndex.value = null
   error.value = ''
   showBulkRestockModal.value = true
 }
@@ -247,7 +232,7 @@ const filteredRestockHistory = computed(() => {
   return restockHistory.value.filter(restock => 
     restock.product.name.toLowerCase().includes(query) ||
     restock.product.code.toLowerCase().includes(query) ||
-    restock.note.toLowerCase().includes(query) ||
+    (restock.note && restock.note.toLowerCase().includes(query)) ||
     restock.user.username.toLowerCase().includes(query)
   )
 })
@@ -278,26 +263,10 @@ const cancelDelete = () => {
   restockToDelete.value = null
 }
 
-// Auto-complétion intelligente
-const searchProducts = (query: string, index: number) => {
-  if (!query || query.length < 2) {
-    showSuggestions.value[index] = false
-    return []
-  }
-  
-  const lowerQuery = query.toLowerCase()
-  return filteredProducts.value
-    .filter(product => 
-      product.name.toLowerCase().includes(lowerQuery) ||
-      product.code.toLowerCase().includes(lowerQuery)
-    )
-    .slice(0, 5) // Limiter à 5 suggestions
-}
-
-const selectProduct = (product: any, index: number) => {
+// Fonctions pour Command
+const selectProductFromCommand = (product: any, index: number) => {
   restockItems.value[index].productId = product.id.toString()
-  productSearchQuery.value[index] = `${product.name} (${product.code})`
-  showSuggestions.value[index] = false
+  openCommandIndex.value = null
   
   // Focus sur la quantité
   nextTick(() => {
@@ -308,33 +277,12 @@ const selectProduct = (product: any, index: number) => {
   })
 }
 
-const getSuggestions = (index: number) => {
-  const query = productSearchQuery.value[index] || ''
-  return searchProducts(query, index)
-}
-
-const handleProductInput = (query: string, index: number) => {
-  productSearchQuery.value[index] = query
-  showSuggestions.value[index] = query.length >= 2
+const getSelectedProductDisplay = (index: number) => {
+  const item = restockItems.value[index]
+  if (!item.productId) return 'Sélectionner un produit'
   
-  // Reset product selection si on tape quelque chose de différent
-  const exactMatch = filteredProducts.value.find(p => 
-    `${p.name} (${p.code})` === query
-  )
-  if (!exactMatch) {
-    restockItems.value[index].productId = ''
-  }
-}
-
-const handleProductKeydown = (event: KeyboardEvent, index: number) => {
-  const suggestions = getSuggestions(index)
-  if (event.key === 'ArrowDown' && suggestions.length > 0) {
-    event.preventDefault()
-    selectProduct(suggestions[0], index)
-  } else if (event.key === 'Enter' && suggestions.length > 0) {
-    event.preventDefault()
-    selectProduct(suggestions[0], index)
-  }
+  const product = filteredProducts.value.find(p => p.id.toString() === item.productId)
+  return product ? `${product.name} (${product.code})` : 'Produit inconnu'
 }
 
 onMounted(async () => {
@@ -571,38 +519,53 @@ onMounted(async () => {
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div class="space-y-2 relative">
+              <div class="space-y-2">
                 <Label>Produit</Label>
-                <Input
-                  :value="productSearchQuery[index] || ''"
-                  @input="(e) => handleProductInput(e.target.value, index)"
-                  @keydown="(e) => handleProductKeydown(e, index)"
-                  @focus="showSuggestions[index] = productSearchQuery[index]?.length >= 2"
-                  @blur="() => setTimeout(() => showSuggestions[index] = false, 150)"
-                  placeholder="Tapez le nom ou code du produit..."
-                  class="w-full"
-                  autocomplete="off"
-                />
-                
-                <!-- Suggestions dropdown -->
-                <div 
-                  v-if="showSuggestions[index] && getSuggestions(index).length > 0"
-                  class="absolute z-50 w-full bg-popover border border-border rounded-md shadow-lg max-h-48 overflow-y-auto"
-                  style="top: 100%;"
-                >
-                  <div
-                    v-for="suggestion in getSuggestions(index)"
-                    :key="suggestion.id"
-                    @click="selectProduct(suggestion, index)"
-                    class="px-3 py-2 hover:bg-accent cursor-pointer border-b border-border last:border-b-0"
-                    :class="{
-                      'opacity-50': restockItems.some((i, idx) => idx !== index && i.productId === suggestion.id.toString())
-                    }"
-                  >
-                    <div class="font-medium text-sm">{{ suggestion.name }}</div>
-                    <div class="text-xs text-muted-foreground">{{ suggestion.code }}</div>
-                  </div>
-                </div>
+                <Popover :open="openCommandIndex === index" @update:open="(open) => openCommandIndex = open ? index : null">
+                  <PopoverTrigger as-child>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      class="w-full justify-between"
+                      :class="{ 'text-muted-foreground': !item.productId }"
+                    >
+                      {{ getSelectedProductDisplay(index) }}
+                      <Search class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent class="w-full p-0" side="bottom" align="start">
+                    <Command>
+                      <CommandInput placeholder="Rechercher un produit..." />
+                      <CommandList>
+                        <CommandEmpty>Aucun produit trouvé.</CommandEmpty>
+                        <CommandItem
+                          v-for="product in filteredProducts.filter((p, idx) => 
+                            !restockItems.some((item, itemIdx) => 
+                              itemIdx !== index && item.productId === p.id.toString()
+                            )
+                          )"
+                          :key="product.id"
+                          :value="`${product.name} ${product.code}`"
+                          @select="selectProductFromCommand(product, index)"
+                          class="cursor-pointer"
+                        >
+                          <div class="flex items-center space-x-3">
+                            <div v-if="product.image" class="h-8 w-8 rounded overflow-hidden">
+                              <img :src="buildLogoUrl(product.image)" :alt="product.name" class="h-full w-full object-cover" />
+                            </div>
+                            <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
+                              <Package class="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <div class="font-medium">{{ product.name }}</div>
+                              <div class="text-sm text-muted-foreground">{{ product.code }}</div>
+                            </div>
+                          </div>
+                        </CommandItem>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               
               <div class="space-y-2">
