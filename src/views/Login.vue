@@ -65,7 +65,7 @@ const onSubmit = form.handleSubmit(async (values) => {
     <Card class="max-w-[320px] md:max-w-[400px] w-full shadow-lg">
       <CardHeader class="text-center pb-6">
         <CardTitle class="text-2xl font-bold">MultiMarket</CardTitle>
-        <p class="text-muted-foreground text-sm">Connectez-vous à votre compte</p>
+        <p class="text-muted-foreground text-sm">Connectez-vous à votre compte avec vos differents accès</p>
       </CardHeader>
       
       <CardContent>
