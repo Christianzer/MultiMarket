@@ -536,12 +536,12 @@ const bulkCreateProducts = async () => {
     }
 
     const bulkData = { products: validProducts }
-    console.log(JSON.stringify(bulkData))
+    //console.log(JSON.stringify(bulkData))
 
-    //const response = await api.products.bulkCreate(bulkData)
+    const response = await api.products.bulkCreate(bulkData)
 
-    //showBulkCreateModal.value = false
-    //await loadProducts()
+    showBulkCreateModal.value = false
+    await loadProducts()
   } catch (err: any) {
     bulkError.value = err.message || 'Erreur lors de la création en lot des produits'
     console.error('Erreur lors de la création en lot:', err)
