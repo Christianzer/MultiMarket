@@ -9,6 +9,12 @@ interface ProductsState {
   error: string
   lastFetch: Date | null
   cacheExpiry: number // Durée du cache en millisecondes
+  pagination: {
+    currentPage: number
+    itemsPerPage: number
+    totalItems: number
+    totalPages: number
+  }
 }
 
 export const useProductsStore = defineStore('products', {
@@ -17,7 +23,13 @@ export const useProductsStore = defineStore('products', {
     loading: false,
     error: '',
     lastFetch: null,
-    cacheExpiry: 5 * 60 * 1000 // 5 minutes
+    cacheExpiry: 5 * 60 * 1000, // 5 minutes
+    pagination: {
+      currentPage: 1,
+      itemsPerPage: 10,
+      totalItems: 0,
+      totalPages: 0
+    }
   }),
 
   getters: {
@@ -42,6 +54,25 @@ export const useProductsStore = defineStore('products', {
         product.code.toLowerCase().includes(searchTerm) ||
         product.supermarket.name.toLowerCase().includes(searchTerm)
       )
+    },
+
+    // Produits paginés
+    paginatedProducts: (state) => {
+      const start = (state.pagination.currentPage - 1) * state.pagination.itemsPerPage
+      const end = start + state.pagination.itemsPerPage
+      return state.products.slice(start, end)
+    },
+
+    // Informations de pagination
+    paginationInfo: (state) => {
+      if (state.pagination.totalItems === 0) {
+        return 'Aucun produit'
+      }
+      
+      const start = (state.pagination.currentPage - 1) * state.pagination.itemsPerPage + 1
+      const end = Math.min(state.pagination.currentPage * state.pagination.itemsPerPage, state.pagination.totalItems)
+      
+      return `${start}-${end} sur ${state.pagination.totalItems} produits`
     }
   },
 
@@ -70,6 +101,7 @@ export const useProductsStore = defineStore('products', {
           }
           
           this.lastFetch = new Date()
+          this.updatePagination()
           return this.products
         } catch (err: any) {
           this.error = err.message || 'Erreur lors du chargement des produits'
@@ -148,6 +180,52 @@ export const useProductsStore = defineStore('products', {
     // Nettoyer les erreurs
     clearError() {
       this.error = ''
+    },
+
+    // Mettre à jour la pagination
+    updatePagination() {
+      this.pagination.totalItems = this.products.length
+      this.pagination.totalPages = Math.ceil(this.products.length / this.pagination.itemsPerPage)
+      
+      // Réajuster la page courante si nécessaire
+      if (this.pagination.currentPage > this.pagination.totalPages && this.pagination.totalPages > 0) {
+        this.pagination.currentPage = this.pagination.totalPages
+      }
+    },
+
+    // Changer de page
+    setPage(page: number) {
+      if (page >= 1 && page <= this.pagination.totalPages) {
+        this.pagination.currentPage = page
+      }
+    },
+
+    // Changer le nombre d'éléments par page
+    setItemsPerPage(itemsPerPage: number) {
+      this.pagination.itemsPerPage = itemsPerPage
+      this.pagination.currentPage = 1 // Retour à la première page
+      this.updatePagination()
+    },
+
+    // Naviguer dans la pagination
+    nextPage() {
+      if (this.pagination.currentPage < this.pagination.totalPages) {
+        this.pagination.currentPage++
+      }
+    },
+
+    prevPage() {
+      if (this.pagination.currentPage > 1) {
+        this.pagination.currentPage--
+      }
+    },
+
+    firstPage() {
+      this.pagination.currentPage = 1
+    },
+
+    lastPage() {
+      this.pagination.currentPage = this.pagination.totalPages
     }
   }
 })

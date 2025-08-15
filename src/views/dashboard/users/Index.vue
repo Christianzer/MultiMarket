@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,8 @@ import { Plus, Edit, Trash2, Eye, User, Loader2 } from 'lucide-vue-next'
 import { api } from '@/services/api'
 import type { User as UserType, CreateUserRequest, UpdateUserRequest, UserRole } from '@/types/user'
 import type { Supermarket } from '@/types/supermarket'
+import { PaginationContent } from '@/components/ui/pagination'
+import { usePagination } from '@/composables/usePagination'
 
 const authStore = useAuthStore()
 
@@ -110,7 +112,22 @@ const filterUsers = () => {
   } else {
     filteredUsers.value = []
   }
+  
+  // Mettre à jour la pagination
+  pagination.totalItems.value = filteredUsers.value.length
 }
+
+// Configuration de la pagination
+const pagination = usePagination({
+  initialPage: 1,
+  pageSize: 5,
+  total: 0
+})
+
+// Utilisateurs paginés
+const paginatedUsers = computed(() => {
+  return pagination.paginateData(filteredUsers.value)
+})
 
 const openCreateModal = () => {
   createForm.value = {
@@ -275,7 +292,7 @@ onMounted(async () => {
 
     <!-- Liste des utilisateurs -->
     <div class="grid gap-4">
-      <Card v-for="user in filteredUsers" :key="user.id" class="hover:shadow-md transition-shadow">
+      <Card v-for="user in paginatedUsers" :key="user.id" class="hover:shadow-md transition-shadow">
         <CardContent class="p-6">
           <div class="flex items-center justify-between">
             <!-- Informations utilisateur -->
@@ -324,7 +341,47 @@ onMounted(async () => {
           </div>
         </CardContent>
       </Card>
+      
+      <!-- Message si aucun utilisateur -->
+      <div v-if="paginatedUsers.length === 0 && !loading" class="text-center py-8">
+        <p class="text-muted-foreground">Aucun utilisateur trouvé</p>
+      </div>
     </div>
+
+    <!-- Pagination -->
+    <Card v-if="filteredUsers.length > 0">
+      <CardContent class="p-4">
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <!-- Sélecteur nombre d'éléments par page -->
+          <div class="flex items-center space-x-2">
+            <span class="text-sm text-muted-foreground">Éléments par page:</span>
+            <Select :model-value="pagination.itemsPerPage.value.toString()" @update:model-value="(value) => pagination.itemsPerPage.value = parseInt(value)">
+              <SelectTrigger class="w-[70px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5</SelectItem>
+                <SelectItem value="10">10</SelectItem>
+                <SelectItem value="20">20</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <!-- Composant de pagination -->
+          <PaginationContent
+            :current-page="pagination.currentPage.value"
+            :total-pages="pagination.totalPages.value"
+            :disabled="loading"
+            @page-change="pagination.goToPage"
+          />
+
+          <!-- Information de pagination -->
+          <div class="text-sm text-muted-foreground">
+            {{ pagination.paginationInfo.value }}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
 
     <!-- Statistiques -->
     <div class="grid gap-4 md:grid-cols-4">
