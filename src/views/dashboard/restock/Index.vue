@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue'
+import { ref, onMounted, computed, nextTick, watch } from 'vue'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -12,7 +12,8 @@ import { Command, CommandInput, CommandList, CommandItem, CommandEmpty } from '@
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Plus, Minus, Package, History, Loader2, Trash2, RefreshCw, Search } from 'lucide-vue-next'
+import { PaginationContent } from '@/components/ui/pagination'
+import { Plus, Package, History, Loader2, Trash2, RefreshCw, Search } from 'lucide-vue-next'
 import { api } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
 import type { Product } from '@/types/product'
@@ -41,9 +42,28 @@ const showDeleteModal = ref(false)
 const restockToDelete = ref<Restock | null>(null)
 const deleting = ref(false)
 const searchQuery = ref('')
+const debouncedSearchQuery = ref('')
+
+// Pagination state
+const pagination = ref({
+  currentPage: 1,
+  itemsPerPage: 10,
+  totalItems: 0,
+  totalPages: 0
+})
+const itemsPerPageOptions = [5, 10, 20, 50]
 
 // Auto-complétion Command
 const openCommandIndex = ref<number | null>(null)
+
+// Fonction debounce simple
+function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
+  let timeoutId: number
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), delay)
+  }
+}
 
 // Produits filtrés pour le supermarché de l'admin
 const filteredProducts = computed(() => {
@@ -222,13 +242,23 @@ const getUniqueProductsCount = () => {
   return uniqueProducts.size
 }
 
+// Débounce de la recherche pour éviter trop de calculs
+const debouncedSearch = debounce((query: string) => {
+  debouncedSearchQuery.value = query
+}, 300)
+
+// Watcher pour déclencher le débounce
+watch(searchQuery, (newQuery) => {
+  debouncedSearch(newQuery)
+}, { immediate: true })
+
 // Filtrage de l'historique avec recherche
 const filteredRestockHistory = computed(() => {
-  if (!searchQuery.value.trim()) {
+  if (!debouncedSearchQuery.value.trim()) {
     return restockHistory.value
   }
 
-  const query = searchQuery.value.toLowerCase().trim()
+  const query = debouncedSearchQuery.value.toLowerCase().trim()
   return restockHistory.value.filter(restock =>
     restock.product.name.toLowerCase().includes(query) ||
     restock.product.code.toLowerCase().includes(query) ||
@@ -236,6 +266,54 @@ const filteredRestockHistory = computed(() => {
     restock.user.username.toLowerCase().includes(query)
   )
 })
+
+// Historique paginé pour l'affichage
+const paginatedRestockHistory = computed(() => {
+  const start = (pagination.value.currentPage - 1) * pagination.value.itemsPerPage
+  const end = start + pagination.value.itemsPerPage
+  return filteredRestockHistory.value.slice(start, end)
+})
+
+// Mettre à jour la pagination quand l'historique filtré change
+watch(filteredRestockHistory, (newFiltered) => {
+  const totalItems = newFiltered.length
+  pagination.value.totalItems = totalItems
+  pagination.value.totalPages = Math.ceil(totalItems / pagination.value.itemsPerPage)
+  
+  // Réajuster la page courante si nécessaire
+  if (pagination.value.currentPage > pagination.value.totalPages && pagination.value.totalPages > 0) {
+    pagination.value.currentPage = 1
+  }
+}, { immediate: true })
+
+// Informations de pagination
+const paginationInfo = computed(() => {
+  if (pagination.value.totalItems === 0) {
+    return 'Aucun restockage'
+  }
+  
+  const start = (pagination.value.currentPage - 1) * pagination.value.itemsPerPage + 1
+  const end = Math.min(pagination.value.currentPage * pagination.value.itemsPerPage, pagination.value.totalItems)
+  
+  return `${start}-${end} sur ${pagination.value.totalItems} restockages`
+})
+
+// Fonctions de pagination
+const setPage = (page: number) => {
+  if (page >= 1 && page <= pagination.value.totalPages) {
+    pagination.value.currentPage = page
+  }
+}
+
+const setItemsPerPage = (itemsPerPage: number) => {
+  pagination.value.itemsPerPage = itemsPerPage
+  pagination.value.currentPage = 1 // Retour à la première page
+  
+  // Recalculer la pagination
+  const totalItems = filteredRestockHistory.value.length
+  pagination.value.totalItems = totalItems
+  pagination.value.totalPages = Math.ceil(totalItems / pagination.value.itemsPerPage)
+}
 
 const openDeleteModal = (restock: Restock) => {
   restockToDelete.value = restock
@@ -365,9 +443,7 @@ onMounted(async () => {
             <div class="flex justify-between items-center">
               <div>
                 <CardTitle>Historique des Restockages</CardTitle>
-                <CardDescription>
-                  Liste de tous les restockages effectués dans votre supermarché
-                </CardDescription>
+                <CardDescription>{{ paginationInfo }}</CardDescription>
               </div>
               <div class="flex items-center gap-3">
                 <div class="relative w-64">
@@ -396,23 +472,24 @@ onMounted(async () => {
               <p>{{ searchQuery ? 'Aucun restockage trouvé' : 'Aucun restockage effectué' }}</p>
             </div>
 
-            <Table v-else>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Produit</TableHead>
-                  <TableHead>Quantité</TableHead>
-                  <TableHead>Note</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Utilisateur</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow v-for="restock in filteredRestockHistory" :key="restock.id" class="hover:bg-muted/50">
+            <div v-else>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Produit</TableHead>
+                    <TableHead>Quantité</TableHead>
+                    <TableHead>Note</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Utilisateur</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <TableRow v-for="restock in paginatedRestockHistory" :key="restock.id" class="hover:bg-muted/50">
                   <TableCell>
                     <div class="flex items-center space-x-3">
                       <div v-if="restock.product.image" class="h-8 w-8 rounded overflow-hidden">
-                        <img :src="buildLogoUrl(restock.product.image) || '/favicon.ico'"  :alt="restock.product.name" class="h-full w-full object-cover" />
+                        <img :src="buildLogoUrl(restock.product.image) ?? '/favicon.ico'" :alt="restock.product.name" class="h-full w-full object-cover" />
                       </div>
                       <div v-else class="h-8 w-8 rounded bg-primary/10 flex items-center justify-center">
                         <Package class="h-4 w-4 text-primary" />
@@ -450,8 +527,47 @@ onMounted(async () => {
                     </Button>
                   </TableCell>
                 </TableRow>
+                <TableRow v-if="paginatedRestockHistory.length === 0">
+                  <TableCell colspan="6" class="text-center text-muted-foreground py-8">
+                    Aucun restockage trouvé
+                  </TableCell>
+                </TableRow>
               </TableBody>
             </Table>
+            
+            <!-- Pagination et contrôles -->
+            <div class="border-t p-4">
+              <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <!-- Sélecteur nombre d'éléments par page -->
+                <div class="flex items-center space-x-2">
+                  <span class="text-sm text-muted-foreground">Éléments par page:</span>
+                  <Select :model-value="pagination.itemsPerPage.toString()" @update:model-value="(value) => setItemsPerPage(parseInt(value))">
+                    <SelectTrigger class="w-[70px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem v-for="option in itemsPerPageOptions" :key="option" :value="option.toString()">
+                        {{ option }}
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <!-- Composant de pagination -->
+                <PaginationContent
+                  :current-page="pagination.currentPage"
+                  :total-pages="pagination.totalPages"
+                  :disabled="historyLoading"
+                  @page-change="setPage"
+                />
+
+                <!-- Information de pagination -->
+                <div class="text-sm text-muted-foreground">
+                  {{ paginationInfo }}
+                </div>
+              </div>
+            </div>
+            </div>
           </CardContent>
         </Card>
       </TabsContent>

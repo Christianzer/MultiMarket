@@ -174,7 +174,7 @@ function setupAutoUpdater() {
     const totalMB = Math.round(progressObj.total / 1024 / 1024)
     const percent = Math.round(progressObj.percent)
     
-    let log_message = `📥 Téléchargement: ${percent}% (${transferredMB}/${totalMB} MB) - ${speedKB} KB/s`
+    const log_message = `📥 Téléchargement: ${percent}% (${transferredMB}/${totalMB} MB) - ${speedKB} KB/s`
     console.log(log_message)
 
     // Notify renderer process of download progress with enhanced data
