@@ -15,7 +15,6 @@ import { validateImageFile, createImagePreview, revokeImagePreview } from '@/uti
 import { useAuthStore } from '@/stores/auth'
 import { useProductsStore } from '@/stores/products'
 import { buildLogoUrl } from '@/config/api'
-import type { Restock } from '@/types/restock'
 import { PaginationContent } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
@@ -95,6 +94,7 @@ const bulkProducts = ref<BulkProduct[]>([...Array(5)].map(() => ({
   imageFile: null,
   imagePreview: ''
 })))
+
 const bulkSubmitting = ref(false)
 const bulkError = ref('')
 
@@ -488,9 +488,6 @@ const formatPrice = (price: string) => {
   })} FCFA`
 }
 
-const getProductInitial = (name: string) => {
-  return name.charAt(0).toUpperCase()
-}
 
 const bulkCreateProducts = async () => {
   try {
@@ -567,8 +564,9 @@ const actualiser = async () => {
   }
 }
 
+
 onMounted(async () => {
-  await loadProducts()
+  await loadProducts(true)
   filterProducts()
 })
 </script>

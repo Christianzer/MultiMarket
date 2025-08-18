@@ -29,21 +29,30 @@ export const buildApiUrl = (endpoint: string): string => {
 export const buildLogoUrl = (logoPath: string | null | undefined): string | null => {
   if (!logoPath) return null
 
+  // On nettoie les espaces
   logoPath = logoPath.trim()
 
+
+  // Base URL (ton domaine principal)
+  const baseUrl = 'https://multi.ciatci.com'
+
+  // Si déjà une URL absolue
   if (/^https?:\/\//i.test(logoPath)) {
-    // On force l'ajout de /public si le chemin contient /uploads
+    // On s'assure que /public est bien présent avant /uploads
     return logoPath.replace('/uploads', '/public/uploads')
   }
 
-  const baseUrl = API_CONFIG.baseURL.replace(/\/(index\.php)?\/api$/, '')
-
-  // Ajouter /public avant /uploads si nécessaire
+  // Si chemin relatif
   const cleanPath = logoPath.startsWith('/')
-    ? logoPath.replace('/uploads', '/public/uploads')
-    : `/${logoPath.replace('/uploads', '/public/uploads')}`
+    ? logoPath
+    : `/${logoPath}`
 
-  return `${baseUrl}${encodeURI(cleanPath)}`
+  // On force l’ajout de /public si ce n’est pas déjà dans le chemin
+  const finalPath = cleanPath.includes('/public/')
+    ? cleanPath
+    : cleanPath.replace('/uploads', '/public/uploads')
+
+  return `${baseUrl}${encodeURI(finalPath)}`
 }
 
 

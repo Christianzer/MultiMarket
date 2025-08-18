@@ -27,7 +27,7 @@ export const useAuthStore = defineStore('auth', {
     async login(credentials: LoginRequest) {
       try {
         const response = await authService.login(credentials)
-        
+
         // Stocker le token et l'utilisateur
         this.token = response.token
         this.user = response.user
