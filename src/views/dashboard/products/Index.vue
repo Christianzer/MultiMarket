@@ -424,7 +424,7 @@ const createProduct = async () => {
 
     showCreateModal.value = false
     clearImagePreview()
-    await loadProducts()
+    await actualiser()
   } catch (err: any) {
     console.error('Erreur lors de la création du produit:', err)
   } finally {
@@ -456,12 +456,13 @@ const updateProduct = async () => {
 
     showEditModal.value = false
     clearEditImagePreview()
-    await loadProducts()
+    await actualiser()
   } catch (err: any) {
     console.error('Erreur lors de la modification du produit:', err)
   } finally {
     submitting.value = false
   }
+
 }
 
 const deleteProduct = async () => {
@@ -473,7 +474,7 @@ const deleteProduct = async () => {
     await api.products.delete(selectedProduct.value.id)
 
     showDeleteModal.value = false
-    await loadProducts()
+    await actualiser()
   } catch (err: any) {
     console.error('Erreur lors de la suppression du produit:', err)
   } finally {
@@ -861,7 +862,7 @@ onMounted(async () => {
 
     <!-- Create Modal -->
     <Dialog v-model:open="showCreateModal">
-      <DialogContent class="sm:max-w-md" :disableOutsideClick="true">
+      <DialogContent class="sm:max-w-md max-h-[80vh] overflow-y-auto" :disableOutsideClick="true">
         <DialogHeader>
           <DialogTitle>Créer un Produit</DialogTitle>
           <DialogDescription>
@@ -942,7 +943,7 @@ onMounted(async () => {
 
     <!-- Edit Modal -->
     <Dialog v-model:open="showEditModal">
-      <DialogContent class="sm:max-w-md" :disableOutsideClick="true">
+      <DialogContent class="sm:max-w-md max-h-[80vh] overflow-y-auto" :disableOutsideClick="true">
         <DialogHeader>
           <DialogTitle>Modifier le Produit</DialogTitle>
           <DialogDescription>
@@ -972,7 +973,7 @@ onMounted(async () => {
             <Label>Image actuelle</Label>
             <div class="relative">
               <img
-                :src="selectedProduct.image"
+                :src="buildLogoUrl(selectedProduct.image)"
                 alt="Image actuelle"
                 class="w-full h-32 object-cover rounded-lg border"
               />
