@@ -13,19 +13,36 @@ import { api } from '@/services/api'
 import type { Product, CreateProductRequest, UpdateProductRequest, CreateProductWithImageRequest, UpdateProductWithImageRequest } from '@/types/product'
 import { validateImageFile, createImagePreview, revokeImagePreview } from '@/utils/formData'
 import { useAuthStore } from '@/stores/auth'
-import { useProductsStore } from '@/stores/products'
 import { buildLogoUrl } from '@/config/api'
 import { PaginationContent } from '@/components/ui/pagination'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 const authStore = useAuthStore()
-const productsStore = useProductsStore()
-
+const products = ref<Product[]>([])
+const productsHistory = ref<Product[]>([])
+const loading = ref(false)
 // Variables réactives locales
 const searchQuery = ref('')
 const debouncedSearchQuery = ref('')
 const viewMode = ref<'table' | 'virtual'>('table')
+
+const submitting = ref(false)
+const imagePreviewUrl = ref<string | null>(null)
+const editImagePreviewUrl = ref<string | null>(null)
+const imageError = ref<string>('')
+const fileInput = ref<HTMLInputElement | null>(null)
+const editFileInput = ref<HTMLInputElement | null>(null)
+const historyLoading = ref(false)
+const error = ref('')
+// Pagination state
+const pagination = ref({
+  currentPage: 1,
+  itemsPerPage: 10,
+  totalItems: 0,
+  totalPages: 0
+})
 const itemsPerPageOptions = [5, 10, 20, 50]
+
 
 // Fonction debounce simple
 function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
@@ -64,13 +81,7 @@ const editFormWithImage = ref<UpdateProductWithImageRequest>({
   image: undefined
 })
 
-const submitting = ref(false)
-const imagePreviewUrl = ref<string | null>(null)
-const editImagePreviewUrl = ref<string | null>(null)
-const imageError = ref<string>('')
-const fileInput = ref<HTMLInputElement | null>(null)
-const editFileInput = ref<HTMLInputElement | null>(null)
-const historyLoading = ref(false)
+
 
 // Bulk create state - Excel-like table
 interface BulkProduct {
@@ -98,33 +109,31 @@ const bulkProducts = ref<BulkProduct[]>([...Array(5)].map(() => ({
 const bulkSubmitting = ref(false)
 const bulkError = ref('')
 
-const loadProducts = async (force = false) => {
+const loadProducts = async () => {
   try {
-    await productsStore.fetchProducts(force)
-    filterProducts()
+    loading.value = true
+    const response = await api.products.getAll()
+    products.value = (response.data || response) as Product[]
+    productsHistory.value = products.value || []
+    console.log(products.value)
   } catch (err: any) {
-    console.error('Erreur lors du chargement des produits:', err)
+    error.value = err.message || 'Erreur lors du chargement des produits'
+  } finally {
+    loading.value = false
   }
 }
 
 // Filtrer les produits selon le rôle et le supermarché
 const baseFilteredProducts = ref<Product[]>([])
 
-const filterProducts = () => {
-  if (authStore.userRole === 'super_admin') {
-    baseFilteredProducts.value = productsStore.products
-  } else if (authStore.userRole === 'admin' || authStore.userRole === 'caissier') {
-    baseFilteredProducts.value = authStore.supermarket
-      ? productsStore.products.filter(product => product.supermarket.id.toString() === authStore.supermarket!.id.toString())
-      : []
-  } else {
-    baseFilteredProducts.value = []
+const filterProducts  = computed(() => {
+  if (authStore.userRole === 'admin' && authStore.supermarket) {
+    return products.value.filter(product =>
+      product.supermarket.id === authStore.supermarket?.id
+    )
   }
-  
-  // Mettre à jour la pagination avec les produits filtrés
-  productsStore.products = baseFilteredProducts.value
-  productsStore.updatePagination()
-}
+  return []
+})
 
 // Débounce de la recherche pour éviter trop de calculs
 const debouncedSearch = debounce((query: string) => {
@@ -139,38 +148,40 @@ watch(searchQuery, (newQuery) => {
 // Filtrage avec recherche optimisé
 const filteredProducts = computed(() => {
   if (!debouncedSearchQuery.value.trim()) {
-    return baseFilteredProducts.value
+    return products.value
   }
 
   const query = debouncedSearchQuery.value.toLowerCase().trim()
-  const filtered = baseFilteredProducts.value.filter(product =>
+  return filterProducts.value.filter(product =>
     product.name.toLowerCase().includes(query) ||
     product.code.toLowerCase().includes(query) ||
     (authStore.userRole === 'super_admin' && product.supermarket.name.toLowerCase().includes(query))
   )
-  
-  return filtered
+
 })
 
-// Produits paginés pour l'affichage
-const paginatedProducts = computed(() => {
-  const products = filteredProducts.value
-  const start = (productsStore.pagination.currentPage - 1) * productsStore.pagination.itemsPerPage
-  const end = start + productsStore.pagination.itemsPerPage
-  return products.slice(start, end)
-})
+
+
+
 
 // Mettre à jour la pagination quand les produits filtrés changent
 watch(filteredProducts, (newFiltered) => {
   const totalItems = newFiltered.length
-  productsStore.pagination.totalItems = totalItems
-  productsStore.pagination.totalPages = Math.ceil(totalItems / productsStore.pagination.itemsPerPage)
-  
+  pagination.value.totalItems = totalItems
+  pagination.value.totalPages = Math.ceil(totalItems / pagination.value.itemsPerPage)
+
   // Réajuster la page courante si nécessaire
-  if (productsStore.pagination.currentPage > productsStore.pagination.totalPages && productsStore.pagination.totalPages > 0) {
-    productsStore.pagination.currentPage = 1
+  if (pagination.value.currentPage > pagination.value.totalPages && pagination.value.totalPages > 0) {
+    pagination.value.currentPage = 1
   }
 }, { immediate: true })
+
+
+const paginatedRestockHistory = computed(() => {
+  const start = (pagination.value.currentPage - 1) * pagination.value.itemsPerPage
+  const end = start + pagination.value.itemsPerPage
+  return filteredProducts.value.slice(start, end)
+})
 
 // Handle image file selection
 const handleImageSelect = (event: Event) => {
@@ -557,7 +568,7 @@ const bulkCreateProducts = async () => {
 const actualiser = async () => {
   try {
     historyLoading.value = true
-    await loadProducts(true)
+    await loadProducts()
   } catch (err: any) {
     console.error('Erreur lors du chargement des produits:', err)
   } finally {
@@ -566,9 +577,43 @@ const actualiser = async () => {
 }
 
 
+// Informations de pagination
+const paginationInfo = computed(() => {
+  if (pagination.value.totalItems === 0) {
+    return 'Aucun produit'
+  }
+
+  const start = (pagination.value.currentPage - 1) * pagination.value.itemsPerPage + 1
+  const end = Math.min(pagination.value.currentPage * pagination.value.itemsPerPage, pagination.value.totalItems)
+
+  return `${start}-${end} sur ${pagination.value.totalItems} restockages`
+})
+
+// Fonctions de pagination
+const setPage = (page: number) => {
+  if (page >= 1 && page <= pagination.value.totalPages) {
+    pagination.value.currentPage = page
+  }
+}
+
+const setItemsPerPage = (itemsPerPage: number) => {
+  pagination.value.itemsPerPage = itemsPerPage
+  pagination.value.currentPage = 1 // Retour à la première page
+
+  // Recalculer la pagination
+  const totalItems = filterProducts.value.length
+  pagination.value.totalItems = totalItems
+  pagination.value.totalPages = Math.ceil(totalItems / pagination.value.itemsPerPage)
+}
+
+const getTotalRestockQuantity = () => {
+  return productsHistory.value.reduce((total, product) => {
+    return total + (product.stock ?? 0)
+  }, 0)
+}
+
 onMounted(async () => {
-  await loadProducts(true)
-  filterProducts()
+  await loadProducts()
 })
 </script>
 
@@ -600,16 +645,28 @@ onMounted(async () => {
     </div>
 
     <!-- Statistiques -->
-    <div class="grid gap-4 md:grid-cols-3" v-if="!productsStore.loading">
+    <div class="grid gap-4 md:grid-cols-3" v-if="!loading">
       <Card>
         <CardHeader class="pb-2">
           <CardTitle class="text-base">Total Produits</CardTitle>
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">{{ filteredProducts.length }}</div>
+          <div class="text-2xl font-bold">{{ products.length }}</div>
           <p class="text-xs text-muted-foreground">Enregistrés</p>
         </CardContent>
       </Card>
+
+
+      <Card>
+        <CardHeader class="pb-2">
+          <CardTitle class="text-base">Quantité Totale</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div class="text-2xl font-bold">{{ getTotalRestockQuantity() }}</div>
+          <p class="text-xs text-muted-foreground">Unités restockées</p>
+        </CardContent>
+      </Card>
+
 
       <Card>
         <CardHeader class="pb-2">
@@ -617,8 +674,8 @@ onMounted(async () => {
         </CardHeader>
         <CardContent>
           <div class="text-2xl font-bold">
-            {{ filteredProducts.length > 0
-            ? Math.min(...filteredProducts.map(p => parseFloat(p.price))).toLocaleString('fr-FR', {
+            {{ products.length > 0
+            ? Math.min(...products.map(p => parseFloat(p.price))).toLocaleString('fr-FR', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0
             })
@@ -636,8 +693,8 @@ onMounted(async () => {
         </CardHeader>
         <CardContent>
           <div class="text-2xl font-bold">
-            {{ filteredProducts.length > 0
-            ? Math.max(...filteredProducts.map(p => parseFloat(p.price))).toLocaleString('fr-FR', {
+            {{ products.length > 0
+            ? Math.max(...products.map(p => parseFloat(p.price))).toLocaleString('fr-FR', {
               minimumFractionDigits: 0,
               maximumFractionDigits: 0
             })
@@ -655,7 +712,7 @@ onMounted(async () => {
         </CardHeader>
         <CardContent>
           <div class="text-2xl font-bold">
-            {{  filteredProducts.reduce(
+            {{  products.reduce(
             (sum, p) => sum + (parseFloat(p.price) * parseFloat((p as any).stock || '0')),
             0
           ).toLocaleString('fr-FR', {
@@ -674,7 +731,7 @@ onMounted(async () => {
         <div class="flex items-center justify-between">
           <div>
             <CardTitle>Liste des Produits</CardTitle>
-            <CardDescription>{{ productsStore.paginationInfo }}</CardDescription>
+            <CardDescription>{{ paginationInfo }}</CardDescription>
           </div>
           <div class="flex items-center space-x-4">
             <!-- Bascule de vue -->
@@ -718,7 +775,7 @@ onMounted(async () => {
       </CardHeader>
       <CardContent class="p-0">
 
-        <div v-if="productsStore.loading" class="flex items-center justify-center py-8">
+        <div v-if="loading" class="flex items-center justify-center py-8">
           <Loader2 class="h-8 w-8 animate-spin" />
           <span class="ml-2">Chargement des produits...</span>
         </div>
@@ -742,7 +799,7 @@ onMounted(async () => {
               </TableHeader>
               <TableBody>
                 <TableRow
-                  v-for="product in paginatedProducts"
+                  v-for="product in paginatedRestockHistory"
                   :key="product.id"
                   v-memo="[product.name, product.code, product.price, product.stock]"
                   class="hover:bg-muted/50"
@@ -798,7 +855,7 @@ onMounted(async () => {
                     </div>
                   </TableCell>
                 </TableRow>
-                <TableRow v-if="paginatedProducts.length === 0">
+                <TableRow v-if="paginatedRestockHistory.length === 0">
                   <TableCell :colspan="authStore.userRole === 'super_admin' ? 9 : 8" class="text-center text-muted-foreground py-8">
                     Aucun produit trouvé
                   </TableCell>
@@ -810,8 +867,8 @@ onMounted(async () => {
           <!-- Vue Liste Virtuelle -->
           <div v-else-if="viewMode === 'virtual'" class="p-4">
             <VirtualProductList
-              :products="paginatedProducts"
-              :loading="productsStore.loading"
+              :products="paginatedRestockHistory"
+              :loading="loading"
               @edit="openEditModal"
               @delete="openDeleteModal"
               @details="openDetailsModal"
@@ -827,7 +884,7 @@ onMounted(async () => {
           <!-- Sélecteur nombre d'éléments par page -->
           <div class="flex items-center space-x-2">
             <span class="text-sm text-muted-foreground">Éléments par page:</span>
-            <Select :model-value="productsStore.pagination.itemsPerPage.toString()" @update:model-value="(value) => productsStore.setItemsPerPage(parseInt(value))">
+            <Select :model-value="pagination.itemsPerPage.toString()" @update:model-value="(value) => setItemsPerPage(parseInt(value))">
               <SelectTrigger class="w-[70px]">
                 <SelectValue />
               </SelectTrigger>
@@ -841,23 +898,23 @@ onMounted(async () => {
 
           <!-- Composant de pagination -->
           <PaginationContent
-            :current-page="productsStore.pagination.currentPage"
-            :total-pages="productsStore.pagination.totalPages"
-            :disabled="productsStore.loading"
-            @page-change="productsStore.setPage"
+            :current-page="pagination.currentPage"
+            :total-pages="pagination.totalPages"
+            :disabled="historyLoading"
+            @page-change="setPage"
           />
 
           <!-- Information de pagination -->
           <div class="text-sm text-muted-foreground">
-            {{ productsStore.paginationInfo }}
+            {{ paginationInfo }}
           </div>
         </div>
       </div>
     </Card>
 
     <!-- Error message -->
-    <div v-if="productsStore.error" class="bg-destructive/15 text-destructive p-4 rounded-lg">
-      {{ productsStore.error }}
+    <div v-if="error" class="bg-destructive/15 text-destructive p-4 rounded-lg">
+      {{ error }}
     </div>
 
     <!-- Create Modal -->

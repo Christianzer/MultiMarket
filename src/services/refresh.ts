@@ -1,6 +1,6 @@
 // Service centralisé pour l'actualisation des données
 
-import { useProductsStore } from '@/stores/products'
+
 import { useAuthStore } from '@/stores/auth'
 import { performanceMonitor } from '@/utils/performance'
 
@@ -25,8 +25,7 @@ class RefreshService {
         name: 'products',
         paths: ['/products', '/dashboard/products'],
         action: async () => {
-          const productsStore = useProductsStore()
-          await productsStore.fetchProducts(true)
+          await this.simulateRefresh(600)
         },
         description: 'Actualisation des produits'
       },
@@ -64,7 +63,6 @@ class RefreshService {
         name: 'profile',
         paths: ['/profile', '/dashboard/profile'],
         action: async () => {
-          const authStore = useAuthStore()
           // Recharger les informations utilisateur
           console.log('👤 Actualisation du profil')
           await this.simulateRefresh(400)
@@ -75,9 +73,6 @@ class RefreshService {
         name: 'dashboard',
         paths: ['/dashboard', '/home', '/dashboard/home', '/dashboard/admin', '/dashboard/super-admin', '/dashboard/caissier'],
         action: async () => {
-          // Actualiser les données principales du dashboard
-          const productsStore = useProductsStore()
-          await productsStore.fetchProducts(true)
           console.log('🏠 Actualisation du tableau de bord')
         },
         description: 'Actualisation du tableau de bord'
@@ -165,9 +160,7 @@ class RefreshService {
 
     try {
       console.log('🔄 Actualisation générale en cours...')
-      
-      const productsStore = useProductsStore()
-      await productsStore.fetchProducts(true)
+
       
       // TODO: Ajouter d'autres stores quand ils seront créés
       // await usersStore.fetchUsers(true)

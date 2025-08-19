@@ -163,7 +163,7 @@ export const api = {
 
   // Produits
   products: {
-    getAll: () => apiService.get('/products'),
+    getAll: () => apiService.get('/products?pagination=false'),
     getById: (id: number) => apiService.get(`/products/${id}`),
     create: (product: any) => apiService.request('/products', {
       method: 'POST',
