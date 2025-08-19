@@ -83,6 +83,26 @@ const editFormWithImage = ref<UpdateProductWithImageRequest>({
 
 
 
+const imagesAreReady = ref(false)
+
+const preloadImages = async (urls: string[]) => {
+  const promises = urls.map((url) => {
+    return new Promise<void>((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve()
+      img.onerror = () => {
+        // si l’image ne se charge pas → charger une image par défaut
+        img.src = '/favicon.ico'
+        resolve()
+      }
+      img.src = url
+    })
+  })
+
+  await Promise.all(promises)
+}
+
+
 // Bulk create state - Excel-like table
 interface BulkProduct {
   code: string
@@ -112,10 +132,18 @@ const bulkError = ref('')
 const loadProducts = async () => {
   try {
     loading.value = true
+    imagesAreReady.value = false
     const response = await api.products.getAll()
     products.value = (response.data || response) as Product[]
     productsHistory.value = products.value || []
-    console.log(products.value)
+    // Précharger les images existantes
+    const urls = products.value
+      .filter(p => p.image && p.image !== '')
+      .map(p => buildLogoUrl(p.image))
+
+    await preloadImages(urls)
+
+    imagesAreReady.value = true
   } catch (err: any) {
     error.value = err.message || 'Erreur lors du chargement des produits'
   } finally {
@@ -424,9 +452,10 @@ const createProduct = async () => {
 
     const response = await api.products.create(productData)
 
-    if (createFormWithImage.value.image && response && response.data) {
+
+    if (createFormWithImage.value.image && response) {
       try {
-        await api.products.uploadImage((response.data as Product).id, createFormWithImage.value.image)
+        await api.products.uploadImage(response.id, createFormWithImage.value.image)
         // Recharger les produits pour avoir l'image mise à jour
       } catch (imageErr) {
         console.warn('Produit créé mais erreur lors de l\'upload de l\'image:', imageErr)
@@ -459,7 +488,7 @@ const updateProduct = async () => {
     // Si une image est fournie, l'uploader séparément
     if (editFormWithImage.value.image) {
       try {
-        await api.products.uploadImage(selectedProduct.value.id, editFormWithImage.value.image)
+        await api.products.uploadImage(response.id, editFormWithImage.value.image)
       } catch (imageErr) {
         console.warn('Produit modifié mais erreur lors de l\'upload de l\'image:', imageErr)
       }
@@ -775,7 +804,7 @@ onMounted(async () => {
       </CardHeader>
       <CardContent class="p-0">
 
-        <div v-if="loading" class="flex items-center justify-center py-8">
+        <div v-if="loading || !imagesAreReady" class="flex items-center justify-center py-8">
           <Loader2 class="h-8 w-8 animate-spin" />
           <span class="ml-2">Chargement des produits...</span>
         </div>

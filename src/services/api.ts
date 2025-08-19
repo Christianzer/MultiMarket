@@ -181,7 +181,7 @@ export const api = {
         'Accept': 'application/json'
       }
     }),
-    uploadImage: (id: number, imageFille: File) => {
+    uploadImage: (id: any, imageFille: File) => {
       const formData = new FormData()
       formData.append('image', imageFille)
       return apiService.request(`/products/${id}/image`, {
