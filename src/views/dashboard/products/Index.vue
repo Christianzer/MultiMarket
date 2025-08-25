@@ -1131,7 +1131,7 @@ onMounted(async () => {
         <div class="space-y-4 py-4" v-if="selectedProduct">
           <div class="flex items-center space-x-4">
             <div v-if="selectedProduct.image" class="h-16 w-16 rounded-lg overflow-hidden">
-              <img :src="selectedProduct.image" :alt="selectedProduct.name" class="h-full w-full object-cover" />
+              <img :src="buildLogoUrl(selectedProduct.image)" :alt="selectedProduct.name" class="h-full w-full object-cover" />
             </div>
             <div v-else class="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center">
               <Package class="h-8 w-8 text-primary" />

@@ -248,16 +248,68 @@ const printReceipt = async () => {
       // Fallback pour le navigateur web
       console.log('🖨️ Impression via navigateur (fallback)...')
       const receiptContent = generateReceiptHTML(lastSale.value)
-      const printWindow = window.open('', '_blank')
-
-      if (printWindow) {
-        printWindow.document.write(receiptContent)
-        printWindow.document.close()
-        printWindow.print()
-        printWindow.close()
-        showSuccess('Fenêtre d\'impression ouverte')
-      } else {
-        throw new Error('Impossible d\'ouvrir la fenêtre d\'impression')
+      
+      // Créer un iframe caché pour l'impression
+      const printFrame = document.createElement('iframe')
+      printFrame.style.position = 'absolute'
+      printFrame.style.top = '-1000px'
+      printFrame.style.left = '-1000px'
+      printFrame.style.width = '1px'
+      printFrame.style.height = '1px'
+      printFrame.style.border = 'none'
+      
+      document.body.appendChild(printFrame)
+      
+      try {
+        const frameDoc = printFrame.contentDocument || printFrame.contentWindow?.document
+        if (frameDoc) {
+          frameDoc.open()
+          frameDoc.write(receiptContent)
+          frameDoc.close()
+          
+          // Attendre que le contenu soit chargé puis imprimer
+          printFrame.onload = () => {
+            try {
+              printFrame.contentWindow?.print()
+              showSuccess('Impression lancée')
+              
+              // Nettoyer après un délai
+              setTimeout(() => {
+                document.body.removeChild(printFrame)
+              }, 1000)
+            } catch (printError) {
+              console.error('Erreur lors de l\'impression:', printError)
+              showError('Erreur lors du lancement de l\'impression')
+              document.body.removeChild(printFrame)
+            }
+          }
+        } else {
+          throw new Error('Impossible d\'accéder au document de l\'iframe')
+        }
+      } catch (iframeError) {
+        console.error('Erreur iframe:', iframeError)
+        document.body.removeChild(printFrame)
+        
+        // Dernier recours: créer un blob et l'ouvrir
+        try {
+          const blob = new Blob([receiptContent], { type: 'text/html' })
+          const url = URL.createObjectURL(blob)
+          const printWindow = window.open(url, '_blank', 'width=800,height=600')
+          
+          if (printWindow) {
+            printWindow.onload = () => {
+              printWindow.print()
+              printWindow.close()
+              URL.revokeObjectURL(url)
+            }
+            showSuccess('Fenêtre d\'impression ouverte')
+          } else {
+            throw new Error('Popup bloquée par le navigateur')
+          }
+        } catch (blobError) {
+          console.error('Erreur blob:', blobError)
+          throw new Error('Impossible d\'imprimer: Veuillez autoriser les popups ou utiliser l\'application Electron')
+        }
       }
     }
   } catch (error) {
