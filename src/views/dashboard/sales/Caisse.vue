@@ -121,10 +121,10 @@ const formatPrice = (price: number | string) => {
 // Helper pour formater les prix dans les templates de reçu
 const formatPriceForReceipt = (price: number | string) => {
   const numPrice = typeof price === 'string' ? parseFloat(price) : price
-  return numPrice.toLocaleString('fr-FR', {
+  return `${numPrice.toLocaleString('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  })
+  })} FCFA`
 }
 
 // Calculer la monnaie
@@ -525,8 +525,8 @@ const generateReceiptHTML = (sale: Sale) => {
               <div class="item">
                 <div class="item-name">${item.productName}</div>
                 <div class="item-calc">
-                  <span>${item.quantity} x ${formatPriceForReceipt(item.price)} FCFA</span>
-                  <span>${formatPriceForReceipt(parseFloat(item.price) * item.quantity)} FCFA</span>
+                  <span>${item.quantity} x ${formatPriceForReceipt(item.price)}</span>
+                  <span>${formatPriceForReceipt(parseFloat(item.price) * item.quantity)}</span>
                 </div>
               </div>
             `).join('')}
@@ -539,17 +539,17 @@ const generateReceiptHTML = (sale: Sale) => {
           <div class="totals-section">
             <div class="total-row total-main">
               <span>TOTAL:</span>
-              <span>${formatPriceForReceipt(sale.total)} FCFA</span>
+              <span>${formatPriceForReceipt(sale.total)}</span>
             </div>
             ${sale.clientAmount ? `
               <div class="payment-section">
                 <div class="total-row">
                   <span>Reçu:</span>
-                  <span>${formatPriceForReceipt(sale.clientAmount)} FCFA</span>
+                  <span>${formatPriceForReceipt(sale.clientAmount)}</span>
                 </div>
                 <div class="total-row" style="font-weight: bold;">
                   <span>Monnaie:</span>
-                  <span>${formatPriceForReceipt(sale.change || 0)} FCFA</span>
+                  <span>${formatPriceForReceipt(sale.change || 0)}</span>
                 </div>
               </div>
             ` : ''}
@@ -878,8 +878,8 @@ onMounted(async () => {
               <div v-for="item in lastSale.items" :key="item.productId" class="space-y-1">
                 <div class="font-medium text-xs">{{ item.productName }}</div>
                 <div class="flex justify-between text-xs">
-                  <span>{{ item.quantity }} x {{ formatPriceForReceipt(item.price) }} FCFA</span>
-                  <span class="font-medium">{{ formatPriceForReceipt(parseFloat(item.price) * item.quantity) }} FCFA</span>
+                  <span>{{ item.quantity }} x {{ formatPriceForReceipt(item.price) }}</span>
+                  <span class="font-medium">{{ formatPriceForReceipt(parseFloat(item.price) * item.quantity) }}</span>
                 </div>
               </div>
             </div>
@@ -891,16 +891,16 @@ onMounted(async () => {
             <div class="space-y-1">
               <div class="flex justify-between text-sm font-bold">
                 <span>TOTAL:</span>
-                <span>{{ formatPriceForReceipt(lastSale.total) }} FCFA</span>
+                <span>{{ formatPriceForReceipt(lastSale.total) }}</span>
               </div>
               <div v-if="lastSale.clientAmount" class="space-y-1 text-xs border-t border-dashed border-muted-foreground/30 pt-2">
                 <div class="flex justify-between">
                   <span>Reçu:</span>
-                  <span>{{ formatPriceForReceipt(lastSale.clientAmount) }} FCFA</span>
+                  <span>{{ formatPriceForReceipt(lastSale.clientAmount) }}</span>
                 </div>
                 <div class="flex justify-between font-medium">
                   <span>Monnaie:</span>
-                  <span>{{ formatPriceForReceipt(lastSale.change || 0) }} FCFA</span>
+                  <span>{{ formatPriceForReceipt(lastSale.change || 0) }}</span>
                 </div>
               </div>
               <div class="flex justify-between text-xs mt-2">

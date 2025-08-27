@@ -1215,7 +1215,7 @@ onMounted(async () => {
           </div>
 
           <!-- Excel-like Table -->
-          <div class="flex-1 overflow-hidden border rounded-lg bg-white">
+          <div class="flex-1 overflow-hidden border rounded-lg bg-background">
             <div class="overflow-auto max-h-96">
               <table class="w-full text-sm">
                 <thead class="sticky top-0 bg-muted/80 backdrop-blur">
@@ -1264,7 +1264,7 @@ onMounted(async () => {
                         v-model="product.code" 
                         type="text"
                         placeholder="CODE001" 
-                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                        class="w-full px-2 py-1 border-0 bg-background text-foreground focus:bg-background focus:ring-1 focus:ring-primary rounded text-sm"
                         :class="{ 'ring-1 ring-destructive bg-destructive/5': !product.code.trim() && bulkError && (product.name.trim() || product.price.trim()) }"
                       />
                     </td>
@@ -1273,7 +1273,7 @@ onMounted(async () => {
                         v-model="product.name" 
                         type="text"
                         placeholder="Nom du produit" 
-                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                        class="w-full px-2 py-1 border-0 bg-background text-foreground focus:bg-background focus:ring-1 focus:ring-primary rounded text-sm"
                         :class="{ 'ring-1 ring-destructive bg-destructive/5': !product.name.trim() && bulkError && (product.code.trim() || product.price.trim()) }"
                       />
                     </td>
@@ -1284,7 +1284,7 @@ onMounted(async () => {
                         inputmode="numeric" 
                         pattern="[0-9]*"
                         placeholder="1500" 
-                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                        class="w-full px-2 py-1 border-0 bg-background text-foreground focus:bg-background focus:ring-1 focus:ring-primary rounded text-sm"
                         :class="{ 'ring-1 ring-destructive bg-destructive/5': !product.price.trim() && bulkError && (product.code.trim() || product.name.trim()) }"
                       />
                     </td>
@@ -1295,7 +1295,7 @@ onMounted(async () => {
                         inputmode="numeric" 
                         pattern="[0-9]*"
                         placeholder="50" 
-                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                        class="w-full px-2 py-1 border-0 bg-background text-foreground focus:bg-background focus:ring-1 focus:ring-primary rounded text-sm"
                       />
                     </td>
                     <td class="px-1 py-2 border-l">
@@ -1303,7 +1303,7 @@ onMounted(async () => {
                         v-model="product.note" 
                         type="text"
                         placeholder="Note optionnelle" 
-                        class="w-full px-2 py-1 border-0 bg-transparent focus:bg-white focus:ring-1 focus:ring-primary rounded text-sm"
+                        class="w-full px-2 py-1 border-0 bg-background text-foreground focus:bg-background focus:ring-1 focus:ring-primary rounded text-sm"
                       />
                     </td>
                     <td class="px-1 py-2 border-l">

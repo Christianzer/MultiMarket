@@ -101,10 +101,10 @@ const getRoleLabel = (role: string) => {
 // Helper pour formater les prix dans les templates de reçu
 const formatPriceForReceipt = (price: number | string) => {
   const numPrice = typeof price === 'string' ? parseFloat(price) : price
-  return numPrice.toLocaleString('fr-FR', {
+  return `${numPrice.toLocaleString('fr-FR', {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  })
+  })} FCFA`
 }
 
 // Générer le HTML du reçu pour une vente historique
@@ -308,8 +308,8 @@ const generateReceiptHTML = (sale: SaleRecord) => {
               <div class="item">
                 <div class="item-name">${item.productName}</div>
                 <div class="item-calc">
-                  <span>${item.quantity} x ${formatPriceForReceipt(item.price)} FCFA</span>
-                  <span>${formatPriceForReceipt(parseFloat(item.price) * item.quantity)} FCFA</span>
+                  <span>${item.quantity} x ${formatPriceForReceipt(item.price)}</span>
+                  <span>${formatPriceForReceipt(parseFloat(item.price) * item.quantity)}</span>
                 </div>
               </div>
             `).join('')}
@@ -322,7 +322,7 @@ const generateReceiptHTML = (sale: SaleRecord) => {
           <div class="totals-section">
             <div class="total-row total-main">
               <span>TOTAL:</span>
-              <span>${formatPriceForReceipt(sale.total)} FCFA</span>
+              <span>${formatPriceForReceipt(sale.total)}</span>
             </div>
             <div class="info-row" style="margin-top: 8px;">
               <span>Nb articles:</span>
